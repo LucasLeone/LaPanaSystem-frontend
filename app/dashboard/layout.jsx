@@ -62,7 +62,7 @@ export default function DashboardLayout({ children }) {
           </div>
         </SidebarBody>
       </Sidebar>
-      <div className="flex-1">
+      <div className="flex-1 md:p-16 md:pt-6">
         {children}
       </div>
     </div>
@@ -96,7 +96,7 @@ export const LogoIcon = () => {
       className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
     >
       <div className="h-5 w-6 bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0 text-center">
-        <p>LPS</p>
+        <p>PS</p>
       </div>
     </Link>
   );
