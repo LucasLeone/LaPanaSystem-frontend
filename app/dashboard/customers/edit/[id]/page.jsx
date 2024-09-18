@@ -6,9 +6,11 @@ import {
   Spinner,
   Code,
   Select,
-  SelectItem
+  SelectItem,
+  Link,
+  Tooltip
 } from "@nextui-org/react";
-import { IconCheck } from "@tabler/icons-react";
+import { IconCheck, IconArrowLeft } from "@tabler/icons-react";
 import { useState, useEffect, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
@@ -17,7 +19,7 @@ import { useRouter, useParams } from "next/navigation";
 export default function EditCustomerPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -72,12 +74,12 @@ export default function EditCustomerPage() {
     const token = Cookies.get("access_token");
     try {
       await api.put(`/customers/${id}/`, {
-          name,
-          email,
-          phone_number: phone,
-          address,
-          customer_type: customerType,
-        },
+        name,
+        email,
+        phone_number: phone,
+        address,
+        customer_type: customerType,
+      },
         {
           headers: {
             Authorization: `Token ${token}`,
@@ -96,7 +98,16 @@ export default function EditCustomerPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-      <p className="text-2xl font-bold mb-2">Editar Cliente - #{id}</p>
+      <div className="flex items-center mb-4 gap-1">
+        <Link href="/dashboard/customers">
+          <Tooltip content="Volver" placement="bottom">
+            <Button variant="light" size="sm" isIconOnly>
+              <IconArrowLeft className="h-4" />
+            </Button>
+          </Tooltip>
+        </Link>
+        <p className="text-2xl font-bold">Editar Cliente - #{id}</p>
+      </div>
       {error && <Code color='danger' className='text-wrap'>{error}</Code>}
 
       <div className="space-y-4 mt-4">
