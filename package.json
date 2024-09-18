@@ -11,13 +11,16 @@
   "dependencies": {
     "@heroicons/react": "^2.1.5",
     "@nextui-org/react": "^2.4.8",
+    "@tabler/icons-react": "^3.17.0",
     "axios": "^1.7.7",
+    "clsx": "^2.1.1",
     "framer-motion": "^11.5.4",
     "heroicons": "^2.1.5",
     "js-cookie": "^3.0.5",
     "next": "14.2.11",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "tailwind-merge": "^2.5.2"
   },
   "devDependencies": {
     "eslint": "^8",

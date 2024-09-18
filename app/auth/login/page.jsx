@@ -33,11 +33,11 @@ export default function LoginPage() {
       });
 
       const { user, access_token } = response.data;
-      Cookies.set("user", user);
+      Cookies.set("user", JSON.stringify(user));
       Cookies.set("access_token", access_token);
 
       if (Cookies.get("user") && Cookies.get("access_token")) {
-        router.push("/");
+        router.push("/dashboard");
       } else {
         setError("Ha ocurrido un error al iniciar sesión.");
       }
