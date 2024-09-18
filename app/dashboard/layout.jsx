@@ -40,7 +40,7 @@ export default function DashboardLayout({ children }) {
   ];
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex md:min-h-screen flex-wrap md:flex-nowrap">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
         <SidebarBody className="justify-between gap-10 min-h-screen">
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
@@ -62,7 +62,7 @@ export default function DashboardLayout({ children }) {
           </div>
         </SidebarBody>
       </Sidebar>
-      <div className="flex-1 md:p-16 md:pt-6">
+      <div className="flex-grow p-4 mb-10 md:mb-0">
         {children}
       </div>
     </div>
