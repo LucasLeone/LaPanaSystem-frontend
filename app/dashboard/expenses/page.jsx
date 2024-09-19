@@ -41,51 +41,66 @@ import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 
-export default function ProductsPage() {
-  const [products, setProducts] = useState([]);
+export default function ExpensesPage() {
+  const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [brands, setBrands] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const rowsPerPage = 10;
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
   const [filterCategory, setFilterCategory] = useState(null);
-  const [filterBrand, setFilterBrand] = useState(null);
+  const [filterSupplier, setFilterSupplier] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [productToDelete, setProductToDelete] = useState(null);
+  const [expenseToDelete, setExpenseToDelete] = useState(null);
   const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
 
   const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
+  // Función para formatear montos
+  const formatAmount = useCallback((amount) => {
+    if (amount == null || isNaN(amount)) return '';
+    return parseFloat(amount).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }, []);
+
+  // Función para formatear fechas
+  const formatDate = useCallback((dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }, []);
+
+  // Fetch de gastos
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchExpenses = async () => {
       setLoading(true);
       setError(null);
       const token = Cookies.get("access_token");
       try {
-        const response = await api.get("/products/", {
+        const response = await api.get("/expenses/", {
           headers: {
             Authorization: `Token ${token}`,
           },
         });
-        setProducts(response.data);
+        setExpenses(response.data);
       } catch (error) {
         console.error(error);
-        setError("Error al cargar los productos.");
+        setError("Error al cargar los gastos.");
       } finally {
         setLoading(false);
       }
     };
-    fetchProducts();
+    fetchExpenses();
   }, []);
 
+  // Fetch de categorías
   useEffect(() => {
     const fetchCategories = async () => {
       const token = Cookies.get("access_token");
       try {
-        const response = await api.get("/product-categories/", {
+        const response = await api.get("/expense-categories/", {
           headers: {
             Authorization: `Token ${token}`,
           },
@@ -98,23 +113,25 @@ export default function ProductsPage() {
     fetchCategories();
   }, []);
 
+  // Fetch de proveedores
   useEffect(() => {
-    const fetchBrands = async () => {
+    const fetchSuppliers = async () => {
       const token = Cookies.get("access_token");
       try {
-        const response = await api.get("/product-brands/", {
+        const response = await api.get("/suppliers/", {
           headers: {
             Authorization: `Token ${token}`,
           },
         });
-        setBrands(response.data);
+        setSuppliers(response.data);
       } catch (error) {
-        console.error("Error al cargar las marcas:", error);
+        console.error("Error al cargar los proveedores:", error);
       }
     };
-    fetchBrands();
+    fetchSuppliers();
   }, []);
 
+  // Manejo de filtros
   const handleFilterCategory = useCallback((key) => {
     if (key === "none") {
       setFilterCategory(null);
@@ -124,75 +141,77 @@ export default function ProductsPage() {
     setPage(1);
   }, []);
 
-  const handleFilterBrand = useCallback((key) => {
+  const handleFilterSupplier = useCallback((key) => {
     if (key === "none") {
-      setFilterBrand(null);
+      setFilterSupplier(null);
     } else {
-      setFilterBrand(parseInt(key, 10));
+      setFilterSupplier(parseInt(key, 10));
     }
     setPage(1);
   }, []);
 
+  // Manejo de búsqueda
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
     setPage(1);
   }, []);
 
-  const handleDeleteClick = useCallback((product) => {
-    setProductToDelete(product);
+  // Manejo de eliminación
+  const handleDeleteClick = useCallback((expense) => {
+    setExpenseToDelete(expense);
     onOpen();
   }, [onOpen]);
 
-  const handleDeleteProduct = useCallback(async () => {
-    if (!productToDelete) return;
+  const handleDeleteExpense = useCallback(async () => {
+    if (!expenseToDelete) return;
 
     setDeleting(true);
     const token = Cookies.get("access_token");
     try {
-      await api.delete(`/products/${productToDelete.id}/`, {
+      await api.delete(`/expenses/${expenseToDelete.id}/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
-      setProducts((prevProducts) => prevProducts.filter(c => c.id !== productToDelete.id));
+      setExpenses((prevExpenses) => prevExpenses.filter(c => c.id !== expenseToDelete.id));
       onClose();
     } catch (error) {
-      console.error("Error al eliminar producto:", error);
-      setError("Error al eliminar el producto.");
+      console.error("Error al eliminar gasto:", error);
+      setError("Error al eliminar el gasto.");
     } finally {
       setDeleting(false);
     }
-  }, [productToDelete, onClose]);
+  }, [expenseToDelete, onClose]);
 
+  // Definición de columnas
   const columns = [
     { key: 'id', label: '#', sortable: true },
-    { key: 'barcode', label: 'Código de Barras', sortable: true },
-    { key: 'name', label: 'Nombre', sortable: true },
-    { key: 'retail_price', label: 'Precio Minorista', sortable: true },
-    { key: 'wholesale_price', label: 'Precio Mayorista', sortable: true },
-    { key: 'weight', label: 'Peso', sortable: false },
+    { key: 'amount', label: 'Monto', sortable: true },
+    { key: 'date', label: 'Fecha', sortable: true },
+    { key: 'description', label: 'Descripción', sortable: false },
     { key: 'category', label: 'Categoría', sortable: true },
-    { key: 'brand', label: 'Marca', sortable: true },
+    { key: 'supplier', label: 'Proveedor', sortable: true },
     { key: 'actions', label: 'Acciones', sortable: false },
   ];
 
-  const sortedProducts = useMemo(() => {
-    if (!sortDescriptor.column) return [...products];
-    const sorted = [...products].sort((a, b) => {
+  // Ordenamiento de gastos
+  const sortedExpenses = useMemo(() => {
+    if (!sortDescriptor.column) return [...expenses];
+    const sorted = [...expenses].sort((a, b) => {
       let aValue, bValue;
 
       if (sortDescriptor.column === 'category') {
         aValue = a.category_details?.name || '';
         bValue = b.category_details?.name || '';
-      } else if (sortDescriptor.column === 'brand') {
-        aValue = a.brand_details?.name || '';
-        bValue = b.brand_details?.name || '';
-      } else if (sortDescriptor.column === 'wholesale_price') {
-        aValue = a.wholesale_price != null ? parseFloat(a.wholesale_price) : 0;
-        bValue = b.wholesale_price != null ? parseFloat(b.wholesale_price) : 0;
-      } else if (sortDescriptor.column === 'retail_price') {
-        aValue = a.retail_price != null ? parseFloat(a.retail_price) : 0;
-        bValue = b.retail_price != null ? parseFloat(b.retail_price) : 0;
+      } else if (sortDescriptor.column === 'supplier') {
+        aValue = a.supplier_details?.name || '';
+        bValue = b.supplier_details?.name || '';
+      } else if (sortDescriptor.column === 'amount') {
+        aValue = a.amount != null ? parseFloat(a.amount) : 0;
+        bValue = b.amount != null ? parseFloat(b.amount) : 0;
+      } else if (sortDescriptor.column === 'date') {
+        aValue = a.date != null ? new Date(a.date) : new Date(0);
+        bValue = b.date != null ? new Date(b.date) : new Date(0);
       } else {
         aValue = a[sortDescriptor.column] != null ? a[sortDescriptor.column] : '';
         bValue = b[sortDescriptor.column] != null ? b[sortDescriptor.column] : '';
@@ -213,6 +232,12 @@ export default function ProductsPage() {
           : bValue - aValue;
       }
 
+      if (aValue instanceof Date && bValue instanceof Date) {
+        return sortDescriptor.direction === 'ascending'
+          ? aValue - bValue
+          : bValue - aValue;
+      }
+
       const aStr = String(aValue);
       const bStr = String(bValue);
       return sortDescriptor.direction === 'ascending'
@@ -220,48 +245,47 @@ export default function ProductsPage() {
         : bStr.localeCompare(aStr);
     });
     return sorted;
-  }, [products, sortDescriptor]);
+  }, [expenses, sortDescriptor]);
 
-  const filteredProducts = useMemo(() => {
-    let filtered = [...sortedProducts];
+  // Filtrado y búsqueda
+  const filteredExpenses = useMemo(() => {
+    let filtered = [...sortedExpenses];
 
     if (filterCategory) {
-      filtered = filtered.filter(product =>
-        product.category_details &&
-        product.category_details.id === filterCategory
+      filtered = filtered.filter(expense =>
+        expense.category_details &&
+        expense.category_details.id === filterCategory
       );
     }
 
-    if (filterBrand) {
-      filtered = filtered.filter(product =>
-        product.brand_details &&
-        product.brand_details.id === filterBrand
+    if (filterSupplier) {
+      filtered = filtered.filter(expense =>
+        expense.supplier_details &&
+        expense.supplier_details.id === filterSupplier
       );
     }
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(product =>
-        (product.name && product.name.toLowerCase().includes(query)) ||
-        (product.barcode && product.barcode.includes(searchQuery)) ||
-        (product.category_details?.name && product.category_details.name.toLowerCase().includes(query)) ||
-        (product.brand_details?.name && product.brand_details.name.toLowerCase().includes(query))
+      filtered = filtered.filter(expense =>
+        (expense.description && expense.description.toLowerCase().includes(query)) ||
+        (expense.category_details?.name && expense.category_details.name.toLowerCase().includes(query)) ||
+        (expense.supplier_details?.name && expense.supplier_details.name.toLowerCase().includes(query))
       );
     }
 
     return filtered;
-  }, [sortedProducts, filterCategory, filterBrand, searchQuery]);
+  }, [sortedExpenses, filterCategory, filterSupplier, searchQuery]);
 
+  // Mapeo de gastos a filas de la tabla
   const rows = useMemo(() => (
-    filteredProducts.map(product => ({
-      id: product.id,
-      barcode: product.barcode,
-      name: product.name,
-      retail_price: `${parseFloat(product.retail_price).toLocaleString('es-AR', {style:'currency', currency:'ARS'})}`,
-      wholesale_price: `${product.wholesale_price ? parseFloat(product.wholesale_price).toLocaleString('es-AR', {style:'currency', currency:'ARS'}) : ''}`,
-      weight: product.weight ? `${parseFloat(product.weight).toLocaleString('es-AR')} ${product.weight_unit}` : '',
-      category: product.category_details?.name || '',
-      brand: product.brand_details?.name || '',
+    filteredExpenses.map(expense => ({
+      id: expense.id,
+      amount: formatAmount(expense.amount),
+      date: formatDate(expense.date),
+      description: expense.description,
+      category: expense.category_details?.name || '',
+      supplier: expense.supplier_details?.name || '',
       actions: (
         <div className="flex space-x-2">
           <Tooltip content="Editar">
@@ -270,8 +294,8 @@ export default function ProductsPage() {
               className="rounded-md"
               isIconOnly
               color="warning"
-              onPress={() => router.push(`/dashboard/products/edit/${product.slug}`)}
-              aria-label={`Editar producto ${product.name}`}
+              onPress={() => router.push(`/dashboard/expenses/edit/${expense.id}`)}
+              aria-label={`Editar gasto ${expense.description}`}
             >
               <IconEdit className="h-5" />
             </Button>
@@ -282,8 +306,8 @@ export default function ProductsPage() {
               className="rounded-md"
               isIconOnly
               color="danger"
-              onPress={() => handleDeleteClick(product)}
-              aria-label={`Eliminar producto ${product.name}`}
+              onPress={() => handleDeleteClick(expense)}
+              aria-label={`Eliminar gasto ${expense.description}`}
             >
               <IconX className="h-5" />
             </Button>
@@ -291,17 +315,19 @@ export default function ProductsPage() {
         </div>
       )
     }))
-  ), [filteredProducts, handleDeleteClick, router]);
+  ), [filteredExpenses, handleDeleteClick, router, formatAmount, formatDate]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
 
+  // Reseteo de página si excede el total de páginas
   useEffect(() => {
     if (page > totalPages && totalPages > 0) {
       setPage(1);
     }
   }, [totalPages, page]);
 
+  // Paginación
   const currentItems = useMemo(() => {
     const startIdx = (page - 1) * rowsPerPage;
     const endIdx = startIdx + rowsPerPage;
@@ -314,6 +340,7 @@ export default function ProductsPage() {
     setPage(newPage);
   }, []);
 
+  // Función para manejar el cambio de ordenamiento
   const handleSortChange = useCallback((columnKey) => {
     setSortDescriptor(prev => {
       if (prev.column === columnKey) {
@@ -330,6 +357,7 @@ export default function ProductsPage() {
     });
   }, []);
 
+  // Función para renderizar los encabezados con ordenamiento
   const renderHeader = useCallback((column) => {
     const isSortable = column.sortable;
     const isSorted = sortDescriptor.column === column.key;
@@ -354,43 +382,45 @@ export default function ProductsPage() {
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
       
+      {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
-        <p className="text-2xl font-bold mb-4 md:mb-0">Productos</p>
+        <p className="text-2xl font-bold mb-4 md:mb-0">Gastos</p>
         <div className="flex flex-wrap gap-2">
-          <Tooltip content="Exportar productos">
+          <Tooltip content="Exportar gastos">
             <Button variant="bordered" className="rounded-md border-1.5">
               <IconDownload className="h-4 mr-1" />
               Exportar
             </Button>
           </Tooltip>
-          <Tooltip content="Listar marcas">
-            <Link href="/dashboard/products/brands">
-              <Button className="rounded-md bg-black text-white">
-                Marcas
-              </Button>
-            </Link>
-          </Tooltip>
-          <Tooltip content="Listar categorías">
-            <Link href="/dashboard/products/categories">
+          <Tooltip content="Agregar nuevo gasto">
+            <Link href="/dashboard/expenses/create">
               <Button className="rounded-md bg-black text-white">
                 Categorías
               </Button>
             </Link>
           </Tooltip>
-          <Tooltip content="Agregar nuevo producto">
-            <Link href="/dashboard/products/create">
+          <Tooltip content="Agregar nuevo gasto">
+            <Link href="/dashboard/expenses/create">
+              <Button className="rounded-md bg-black text-white">
+                Proveedores
+              </Button>
+            </Link>
+          </Tooltip>
+          <Tooltip content="Agregar nuevo gasto">
+            <Link href="/dashboard/expenses/create">
               <Button className="rounded-md bg-black text-white">
                 <IconPlus className="h-4 mr-1" />
-                Nuevo Producto
+                Nuevo Gasto
               </Button>
             </Link>
           </Tooltip>
         </div>
       </div>
 
+      {/* Barra de Búsqueda y Filtros */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
         <Input
-          placeholder="Buscar productos"
+          placeholder="Buscar gastos"
           startContent={<IconSearch className="h-4" />}
           radius="none"
           variant="underlined"
@@ -401,10 +431,11 @@ export default function ProductsPage() {
             setPage(1);
           }}
           className="w-full md:w-1/3"
-          aria-label="Buscar productos"
+          aria-label="Buscar gastos"
           isClearable={true}
         />
         <div className="flex space-x-4">
+          {/* Filtro por Categoría */}
           <Dropdown>
             <DropdownTrigger>
               <Button
@@ -432,35 +463,37 @@ export default function ProductsPage() {
             </DropdownMenu>
           </Dropdown>
 
+          {/* Filtro por Proveedor */}
           <Dropdown>
             <DropdownTrigger>
               <Button
                 variant="bordered"
-                className={`rounded-md border-1.5 ${filterBrand ? 'bg-gray-200' : ''}`}
-                aria-label="Filtros de Marca"
+                className={`rounded-md border-1.5 ${filterSupplier ? 'bg-gray-200' : ''}`}
+                aria-label="Filtros de Proveedor"
               >
                 <IconFilter className="h-4 mr-1" />
-                {filterBrand
-                  ? `${brands.find(item => item.id === filterBrand)?.name || "Marca"}`
-                  : "Marca"}
+                {filterSupplier
+                  ? `${suppliers.find(item => item.id === filterSupplier)?.name || "Proveedor"}`
+                  : "Proveedor"}
               </Button>
             </DropdownTrigger>
-            <DropdownMenu aria-label="Filtros de Marca" onAction={handleFilterBrand}>
+            <DropdownMenu aria-label="Filtros de Proveedor" onAction={handleFilterSupplier}>
               <DropdownSection showDivider>
-                {brands.map(item => (
+                {suppliers.map(item => (
                   <DropdownItem key={item.id} value={item.id}>
                     {item.name}
                   </DropdownItem>
                 ))}
               </DropdownSection>
-              <DropdownItem key="none-brand" value="none">
-                Quitar Filtro de Marca
+              <DropdownItem key="none-supplier" value="none">
+                Quitar Filtro de Proveedor
               </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         </div>
       </div>
 
+      {/* Tabla de Gastos */}
       <div className="overflow-x-auto border rounded-md">
         {loading ? (
           <div className="flex justify-center items-center p-6">
@@ -472,11 +505,11 @@ export default function ProductsPage() {
           </div>
         ) : currentItemsCount === 0 ? (
           <div className="text-center p-6">
-            No hay productos para mostrar.
+            No hay gastos para mostrar.
           </div>
         ) : (
           <Table
-            aria-label="Productos"
+            aria-label="Gastos"
             className="border-none min-w-full"
             shadow="none"
             isCompact
@@ -524,10 +557,11 @@ export default function ProductsPage() {
         )}
       </div>
 
+      {/* Paginación y Contador */}
       {!loading && !error && currentItemsCount !== 0 && (
         <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
-            Mostrando {currentItemsCount} de {totalItems} productos
+            Mostrando {currentItemsCount} de {totalItems} gastos
           </p>
           <Pagination
             total={totalPages}
@@ -537,12 +571,13 @@ export default function ProductsPage() {
             size="sm"
             showShadow={true}
             color="primary"
-            boundaryCount={1}
-            siblingCount={1}
+            // boundaryCount={1}
+            // siblingCount={1}
           />
         </div>
       )}
 
+      {/* Modal de Confirmación de Eliminación */}
       <Modal isOpen={isOpen} onOpenChange={onClose} aria-labelledby="modal-title" placement="top-center">
         <ModalContent>
           {() => (
@@ -550,7 +585,7 @@ export default function ProductsPage() {
               <ModalHeader className="flex flex-col gap-1">Confirmar Eliminación</ModalHeader>
               <ModalBody>
                 <p>
-                  ¿Estás seguro de que deseas eliminar el producto <strong>{productToDelete?.name}</strong>?
+                  ¿Estás seguro de que deseas eliminar el gasto <strong>{expenseToDelete?.description}</strong>?
                   Esta acción no se puede deshacer.
                 </p>
               </ModalBody>
@@ -565,7 +600,7 @@ export default function ProductsPage() {
                 </Button>
                 <Button
                   color="primary"
-                  onPress={handleDeleteProduct}
+                  onPress={handleDeleteExpense}
                   disabled={deleting}
                 >
                   {deleting ? <Spinner size="sm" /> : "Eliminar"}
