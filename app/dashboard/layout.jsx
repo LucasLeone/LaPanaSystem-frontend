@@ -10,7 +10,8 @@ import {
   IconCreditCard,
   IconShoppingCart,
   IconUser,
-  IconArrowLeft
+  IconArrowLeft,
+  IconUsersGroup
 } from "@tabler/icons-react";
 import { Link } from "@nextui-org/react";
 import { motion } from "framer-motion";
@@ -43,9 +44,10 @@ export default function DashboardLayout({ children }) {
   const menuItems = [
     { label: "Inicio", path: "/dashboard", icon: <IconHome /> },
     { label: "Productos", path: "/dashboard/products", icon: <IconPackage /> },
-    { label: "Clientes", path: "/dashboard/customers", icon: <IconUsers /> },
+    { label: "Clientes", path: "/dashboard/customers", icon: <IconUsersGroup /> },
     { label: "Gastos", path: "/dashboard/expenses", icon: <IconCreditCard /> },
     { label: "Ventas", path: "/dashboard/sales", icon: <IconShoppingCart /> },
+    { label: "Empleados", path: "/dashboard/employees", icon: <IconUsers /> },
     { 
       label: "Cerrar sesión",
       onClick: handleLogout,
