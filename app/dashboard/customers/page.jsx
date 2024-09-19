@@ -340,14 +340,14 @@ export default function CustomersPage() {
             </Button>
           </DropdownTrigger>
           <DropdownMenu aria-label="Filters" onAction={handleFilterAction}>
-            <DropdownSection showDivider className="max-h-60 overflow-y-auto">
+            <DropdownSection className="max-h-60 overflow-y-auto">
               {filterItems.map(item => (
                 <DropdownItem key={item.key} value={item.key}>
                   {item.label}
                 </DropdownItem>
               ))}
             </DropdownSection>
-            <DropdownItem key="none" value="none">
+            <DropdownItem key="none" value="none" className="border-t-1 rounded-t-none">
               Quitar Filtro
             </DropdownItem>
           </DropdownMenu>

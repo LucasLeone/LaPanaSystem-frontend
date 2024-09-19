@@ -419,14 +419,14 @@ export default function ProductsPage() {
               </Button>
             </DropdownTrigger>
             <DropdownMenu aria-label="Filtros de Categoría" onAction={handleFilterCategory}>
-              <DropdownSection showDivider className="max-h-60 overflow-y-auto">
+              <DropdownSection className="max-h-60 overflow-y-auto">
                 {categories.map(item => (
                   <DropdownItem key={item.id} value={item.id}>
                     {item.name}
                   </DropdownItem>
                 ))}
               </DropdownSection>
-              <DropdownItem key="none-category" value="none">
+              <DropdownItem key="none-category" value="none" className="border-t-1 rounded-t-none">
                 Quitar Filtro de Categoría
               </DropdownItem>
             </DropdownMenu>
@@ -446,14 +446,14 @@ export default function ProductsPage() {
               </Button>
             </DropdownTrigger>
             <DropdownMenu aria-label="Filtros de Marca" onAction={handleFilterBrand}>
-              <DropdownSection showDivider className="max-h-60 overflow-y-auto">
+              <DropdownSection className="max-h-60 overflow-y-auto">
                 {brands.map(item => (
                   <DropdownItem key={item.id} value={item.id}>
                     {item.name}
                   </DropdownItem>
                 ))}
               </DropdownSection>
-              <DropdownItem key="none-brand" value="none">
+              <DropdownItem key="none-brand" value="none" className="border-t-1 rounded-t-none">
                 Quitar Filtro de Marca
               </DropdownItem>
             </DropdownMenu>
