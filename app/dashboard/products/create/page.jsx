@@ -7,9 +7,11 @@ import {
   Code,
   Select,
   SelectItem,
-  Textarea,
+  Link,
+  Tooltip,
+  Textarea
 } from "@nextui-org/react";
-import { IconPlus } from "@tabler/icons-react";
+import { IconPlus, IconArrowLeft } from "@tabler/icons-react";
 import { useState, useCallback, useEffect } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
@@ -156,13 +158,22 @@ export default function CreateProductPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-      <p className="text-2xl font-bold mb-2">Crear Nuevo Producto</p>
+      <div className="flex items-center mb-4 gap-1">
+        <Link href="/dashboard/products">
+          <Tooltip content="Volver" placement="bottom">
+            <Button variant="light" size="sm" isIconOnly>
+              <IconArrowLeft className="h-4" />
+            </Button>
+          </Tooltip>
+        </Link>
+        <p className="text-2xl font-bold">Crear nuevo Producto</p>
+      </div>
       {error && <Code color="danger" className="text-wrap">{error}</Code>}
 
       <div className="space-y-4 mt-4">
         <Input
           label="Código de Barras"
-          placeholder="Ingrese el código de barras (8-15 dígitos)"
+          placeholder="Ingrese el código de barras"
           value={barcode}
           onChange={(e) => setBarcode(e.target.value)}
           fullWidth
@@ -249,7 +260,7 @@ export default function CreateProductPage() {
             </Select>
           </div>
         </div>
-        <Input
+        <Textarea
           label="Descripción"
           placeholder="Ingrese una descripción del producto (Opcional)"
           value={description}

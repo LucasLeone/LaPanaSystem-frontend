@@ -6,7 +6,6 @@ import {
   DropdownItem,
   DropdownMenu,
   DropdownTrigger,
-  getKeyValue,
   Input,
   Table,
   TableBody,
@@ -17,7 +16,6 @@ import {
   Pagination,
   Spinner,
   Tooltip,
-  DropdownSection,
   Modal,
   ModalContent,
   ModalHeader,
@@ -40,52 +38,26 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
-import { capitalize } from "@/app/utils";
 
-export default function ProductsPage() {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]); // Estado para categorías
-  const [brands, setBrands] = useState([]); // Estado para marcas
-  const rowsPerPage = 10; // Definido como constante
+export default function CategoriesPage() {
+  const [categories, setCategories] = useState([]);
+  const [rowsPerPage] = useState(10); // Definido como constante
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false); // Estado para manejar la eliminación
   const [error, setError] = useState(null);
-  const [filterCategory, setFilterCategory] = useState(null); // Filtro por categoría (ID)
-  const [filterBrand, setFilterBrand] = useState(null); // Filtro por marca (ID)
   const [searchQuery, setSearchQuery] = useState("");
-  const [productToDelete, setProductToDelete] = useState(null); // Producto a eliminar
+  const [categoryToDelete, setCategoryToDelete] = useState(null); // Categoría a eliminar
   const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null }); // Añadido
 
   const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure(); // Control del modal
 
-  // Fetch de productos
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      setError(null);
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/products/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setProducts(response.data);
-      } catch (error) {
-        console.error(error);
-        setError("Error al cargar los productos.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProducts();
-  }, []);
-
   // Fetch de categorías
   useEffect(() => {
     const fetchCategories = async () => {
+      setLoading(true);
+      setError(null);
       const token = Cookies.get("access_token");
       try {
         const response = await api.get("/product-categories/", {
@@ -96,47 +68,12 @@ export default function ProductsPage() {
         setCategories(response.data);
       } catch (error) {
         console.error("Error al cargar las categorías:", error);
+        setError("Error al cargar las categorías.");
+      } finally {
+        setLoading(false);
       }
     };
     fetchCategories();
-  }, []);
-
-  // Fetch de marcas
-  useEffect(() => {
-    const fetchBrands = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/product-brands/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setBrands(response.data);
-      } catch (error) {
-        console.error("Error al cargar las marcas:", error);
-      }
-    };
-    fetchBrands();
-  }, []);
-
-  // Manejo de acciones de filtro por categoría
-  const handleFilterCategory = useCallback((key) => {
-    if (key === "none") {
-      setFilterCategory(null);
-    } else {
-      setFilterCategory(parseInt(key, 10)); // Asumiendo que key es el ID
-    }
-    setPage(1);
-  }, []);
-
-  // Manejo de acciones de filtro por marca
-  const handleFilterBrand = useCallback((key) => {
-    if (key === "none") {
-      setFilterBrand(null);
-    } else {
-      setFilterBrand(parseInt(key, 10)); // Asumiendo que key es el ID
-    }
-    setPage(1);
   }, []);
 
   // Manejo de cambio en la búsqueda (sin debounce)
@@ -145,64 +82,50 @@ export default function ProductsPage() {
     setPage(1);
   }, []);
 
-  // Función para abrir el modal y setear el producto a eliminar
-  const handleDeleteClick = useCallback((product) => {
-    setProductToDelete(product);
+  // Función para abrir el modal y setear la categoría a eliminar
+  const handleDeleteClick = useCallback((category) => {
+    setCategoryToDelete(category);
     onOpen();
   }, [onOpen]);
 
-  // Función para eliminar el producto
-  const handleDeleteProduct = useCallback(async () => {
-    if (!productToDelete) return;
+  // Función para eliminar la categoría
+  const handleDeleteCategory = useCallback(async () => {
+    if (!categoryToDelete) return;
 
     setDeleting(true);
     const token = Cookies.get("access_token");
     try {
-      // Asegúrate de que el endpoint de eliminación utiliza el ID del producto
-      await api.delete(`/products/${productToDelete.slug}/`, { // Usar ID en lugar de slug
+      // Asegúrate de que el endpoint de eliminación utiliza el ID de la categoría
+      await api.delete(`/product-categories/${categoryToDelete.id}/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
-      setProducts((prevProducts) => prevProducts.filter(c => c.id !== productToDelete.id));
+      setCategories((prevCategories) => prevCategories.filter(c => c.id !== categoryToDelete.id));
       onClose();
     } catch (error) {
-      console.error("Error al eliminar producto:", error);
-      setError("Error al eliminar el producto.");
+      console.error("Error al eliminar la categoría:", error);
+      setError("Error al eliminar la categoría.");
     } finally {
       setDeleting(false);
     }
-  }, [productToDelete, onClose]);
+  }, [categoryToDelete, onClose]);
 
   const columns = [
     { key: 'id', label: '#', sortable: true },
-    { key: 'barcode', label: 'Código de Barras', sortable: true },
     { key: 'name', label: 'Nombre', sortable: true },
-    { key: 'retail_price', label: 'Precio Minorista', sortable: true },
-    { key: 'wholesale_price', label: 'Precio Mayorista', sortable: true },
-    { key: 'weight', label: 'Peso', sortable: false },
-    { key: 'category', label: 'Categoría', sortable: true },
-    { key: 'brand', label: 'Marca', sortable: true },
+    { key: 'description', label: 'Descripción', sortable: false },
     { key: 'actions', label: 'Acciones', sortable: false },
   ];
 
-  // Ordenamiento de los productos según la columna seleccionada
-  const sortedProducts = useMemo(() => {
-    if (!sortDescriptor.column) return [...products];
-    const sorted = [...products].sort((a, b) => {
+  // Ordenamiento de las categorías según la columna seleccionada
+  const sortedCategories = useMemo(() => {
+    if (!sortDescriptor.column) return [...categories];
+    const sorted = [...categories].sort((a, b) => {
       let aValue, bValue;
 
-      // Manejar campos anidados como categoría y marca
-      if (sortDescriptor.column === 'category') {
-        aValue = a.category_details?.name || '';
-        bValue = b.category_details?.name || '';
-      } else if (sortDescriptor.column === 'brand') {
-        aValue = a.brand_details?.name || '';
-        bValue = b.brand_details?.name || '';
-      } else {
-        aValue = a[sortDescriptor.column];
-        bValue = b[sortDescriptor.column];
-      }
+      aValue = a[sortDescriptor.column];
+      bValue = b[sortDescriptor.column];
 
       if (typeof aValue === "string") {
         return sortDescriptor.direction === "ascending"
@@ -219,53 +142,30 @@ export default function ProductsPage() {
       return 0;
     });
     return sorted;
-  }, [products, sortDescriptor]);
+  }, [categories, sortDescriptor]);
 
   // Filtrado y búsqueda
-  const filteredProducts = useMemo(() => {
-    let filtered = [...sortedProducts];
-
-    // Filtrar por categoría si se ha seleccionado un filtro
-    if (filterCategory) {
-      filtered = filtered.filter(product =>
-        product.category_details &&
-        product.category_details.id === filterCategory
-      );
-    }
-
-    // Filtrar por marca si se ha seleccionado un filtro
-    if (filterBrand) {
-      filtered = filtered.filter(product =>
-        product.brand_details &&
-        product.brand_details.id === filterBrand
-      );
-    }
+  const filteredCategories = useMemo(() => {
+    let filtered = [...sortedCategories];
 
     // Aplicar búsqueda sobre los datos filtrados
     if (searchQuery) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(product =>
-        (product.name && product.name.toLowerCase().includes(query)) ||
-        (product.barcode && product.barcode.includes(searchQuery)) ||
-        (product.category_details?.name && product.category_details.name.toLowerCase().includes(query)) ||
-        (product.brand_details?.name && product.brand_details.name.toLowerCase().includes(query))
+      filtered = filtered.filter(category =>
+        (category.name && category.name.toLowerCase().includes(query)) ||
+        (category.description && category.description.toLowerCase().includes(query))
       );
     }
 
     return filtered;
-  }, [sortedProducts, filterCategory, filterBrand, searchQuery]);
+  }, [sortedCategories, searchQuery]);
 
-  // Mapeo de productos a filas de la tabla
+  // Mapeo de categorías a filas de la tabla
   const rows = useMemo(() => (
-    filteredProducts.map(product => ({
-      id: product.id,
-      barcode: product.barcode,
-      name: product.name,
-      retail_price: `$${parseFloat(product.retail_price).toLocaleString()}`,
-      wholesale_price: `${product.wholesale_price ? "$" + parseFloat(product.wholesale_price).toLocaleString() : ''}`,
-      weight: product.weight ? `${parseFloat(product.weight).toLocaleString()} ${product.weight_unit}` : '',
-      category: product.category_details?.name || '',
-      brand: product.brand_details?.name || '',
+    filteredCategories.map(category => ({
+      id: category.id,
+      name: category.name,
+      description: category.description,
       actions: (
         <div className="flex space-x-2">
           <Tooltip content="Editar">
@@ -274,8 +174,8 @@ export default function ProductsPage() {
               className="rounded-md"
               isIconOnly
               color="warning"
-              onPress={() => router.push(`/dashboard/products/edit/${product.slug}`)}
-              aria-label={`Editar producto ${product.name}`} // Mejoras de accesibilidad
+              onPress={() => router.push(`/dashboard/products/categories/edit/${category.id}`)}
+              aria-label={`Editar categoría ${category.name}`} // Mejoras de accesibilidad
             >
               <IconEdit className="h-5" />
             </Button>
@@ -286,8 +186,8 @@ export default function ProductsPage() {
               className="rounded-md"
               isIconOnly
               color="danger"
-              onPress={() => handleDeleteClick(product)}
-              aria-label={`Eliminar producto ${product.name}`} // Mejoras de accesibilidad
+              onPress={() => handleDeleteClick(category)}
+              aria-label={`Eliminar categoría ${category.name}`} // Mejoras de accesibilidad
             >
               <IconX className="h-5" />
             </Button>
@@ -295,7 +195,7 @@ export default function ProductsPage() {
         </div>
       )
     }))
-  ), [filteredProducts, handleDeleteClick, router]);
+  ), [filteredCategories, handleDeleteClick, router]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
@@ -365,13 +265,20 @@ export default function ProductsPage() {
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
-        <p className="text-2xl font-bold mb-4 md:mb-0">Productos</p>
+        <p className="text-2xl font-bold mb-4 md:mb-0">Categorías</p>
         <div className="flex space-x-2">
-          <Tooltip content="Exportar productos">
+          <Tooltip content="Exportar categorías">
             <Button variant="bordered" className="rounded-md border-1.5">
               <IconDownload className="h-4 mr-1" />
               Exportar
             </Button>
+          </Tooltip>
+          <Tooltip content="Listar productos">
+            <Link href="/dashboard/products">
+              <Button className="rounded-md bg-black text-white">
+                Productos
+              </Button>
+            </Link>
           </Tooltip>
           <Tooltip content="Listar marcas">
             <Link href="/dashboard/products/brands">
@@ -380,101 +287,32 @@ export default function ProductsPage() {
               </Button>
             </Link>
           </Tooltip>
-          <Tooltip content="Listar categorías">
-            <Link href="/dashboard/products/categories">
-              <Button className="rounded-md bg-black text-white">
-                Categorías
-              </Button>
-            </Link>
-          </Tooltip>
-          <Tooltip content="Agregar nuevo producto">
-            <Link href="/dashboard/products/create">
+          <Tooltip content="Agregar nueva categoría">
+            <Link href="/dashboard/products/categories/create">
               <Button className="rounded-md bg-black text-white">
                 <IconPlus className="h-4 mr-1" />
-                Nuevo Producto
+                Nueva Categoría
               </Button>
             </Link>
           </Tooltip>
         </div>
       </div>
 
-      {/* Barra de Búsqueda y Filtros */}
+      {/* Barra de Búsqueda */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
         <Input
-          placeholder="Buscar productos"
+          placeholder="Buscar categorías"
           startContent={<IconSearch className="h-4" />}
           radius="none"
           variant="underlined"
           value={searchQuery}
           onChange={handleSearchChange}
-          onClear={() => {
-            setSearchQuery('');
-            setPage(1);
-          }}
           className="w-full md:w-1/3"
-          aria-label="Buscar productos"
-          isClearable={true}
+          aria-label="Buscar categorías"
         />
-        <div className="flex space-x-4">
-          {/* Filtro por Categoría */}
-          <Dropdown>
-            <DropdownTrigger>
-              <Button
-                variant="bordered"
-                className={`rounded-md border-1.5 ${filterCategory ? 'bg-gray-200' : ''}`}
-                aria-label="Filtros de Categoría"
-              >
-                <IconFilter className="h-4 mr-1" />
-                {filterCategory
-                  ? `${categories.find(item => item.id === filterCategory)?.name || "Categoría"}`
-                  : "Categoría"}
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Filtros de Categoría" onAction={handleFilterCategory}>
-              <DropdownSection showDivider>
-                {categories.map(item => (
-                  <DropdownItem key={item.id} value={item.id}>
-                    {item.name}
-                  </DropdownItem>
-                ))}
-              </DropdownSection>
-              <DropdownItem key="none-category" value="none">
-                Quitar Filtro de Categoría
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-
-          {/* Filtro por Marca */}
-          <Dropdown>
-            <DropdownTrigger>
-              <Button
-                variant="bordered"
-                className={`rounded-md border-1.5 ${filterBrand ? 'bg-gray-200' : ''}`}
-                aria-label="Filtros de Marca"
-              >
-                <IconFilter className="h-4 mr-1" />
-                {filterBrand
-                  ? `${brands.find(item => item.id === filterBrand)?.name || "Marca"}`
-                  : "Marca"}
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Filtros de Marca" onAction={handleFilterBrand}>
-              <DropdownSection showDivider>
-                {brands.map(item => (
-                  <DropdownItem key={item.id} value={item.id}>
-                    {item.name}
-                  </DropdownItem>
-                ))}
-              </DropdownSection>
-              <DropdownItem key="none-brand" value="none">
-                Quitar Filtro de Marca
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-        </div>
       </div>
 
-      {/* Tabla de Productos */}
+      {/* Tabla de Categorías */}
       <div className="overflow-x-auto border rounded-md">
         {loading ? (
           <div className="flex justify-center items-center p-6">
@@ -486,11 +324,11 @@ export default function ProductsPage() {
           </div>
         ) : currentItemsCount === 0 ? (
           <div className="text-center p-6">
-            No hay productos para mostrar.
+            No hay categorías para mostrar.
           </div>
         ) : (
           <Table
-            aria-label="Productos"
+            aria-label="Categorías"
             className="border-none min-w-full"
             shadow="none"
             isCompact
@@ -527,7 +365,7 @@ export default function ProductsPage() {
                     }
                     return (
                       <TableCell className="min-w-[80px] sm:min-w-[100px]">
-                        {getKeyValue(item, columnKey)}
+                        {item[columnKey]}
                       </TableCell>
                     );
                   }}
@@ -542,7 +380,7 @@ export default function ProductsPage() {
       {!loading && !error && currentItemsCount !== 0 && (
         <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
-            Mostrando {currentItemsCount} de {totalItems} productos
+            Mostrando {currentItemsCount} de {totalItems} categorías
           </p>
           <Pagination
             total={totalPages}
@@ -566,7 +404,7 @@ export default function ProductsPage() {
               <ModalHeader className="flex flex-col gap-1">Confirmar Eliminación</ModalHeader>
               <ModalBody>
                 <p>
-                  ¿Estás seguro de que deseas eliminar el producto <strong>{productToDelete?.name}</strong>?
+                  ¿Estás seguro de que deseas eliminar la categoría <strong>{categoryToDelete?.name}</strong>?
                   Esta acción no se puede deshacer.
                 </p>
               </ModalBody>
@@ -581,7 +419,7 @@ export default function ProductsPage() {
                 </Button>
                 <Button
                   color="primary"
-                  onPress={handleDeleteProduct}
+                  onPress={handleDeleteCategory}
                   disabled={deleting}
                 >
                   {deleting ? <Spinner size="sm" /> : "Eliminar"}

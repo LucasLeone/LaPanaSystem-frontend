@@ -8,6 +8,7 @@ import {
   Select,
   SelectItem,
   Tooltip,
+  Textarea
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft } from "@tabler/icons-react";
 import { useState, useCallback, useEffect } from "react";
@@ -229,7 +230,7 @@ export default function EditProductPage() {
       <div className="space-y-4 mt-4">
         <Input
           label="Código de Barras"
-          placeholder="Ingrese el código de barras (8-15 dígitos)"
+          placeholder="Ingrese el código de barras"
           value={barcode}
           onChange={(e) => setBarcode(e.target.value)}
           fullWidth
@@ -316,7 +317,7 @@ export default function EditProductPage() {
             </Select>
           </div>
         </div>
-        <Input
+        <Textarea
           label="Descripción"
           placeholder="Ingrese una descripción del producto (Opcional)"
           value={description}

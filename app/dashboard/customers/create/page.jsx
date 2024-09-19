@@ -6,9 +6,11 @@ import {
   Spinner,
   Code,
   Select,
-  SelectItem
+  SelectItem,
+  Link,
+  Tooltip
 } from "@nextui-org/react";
-import { IconPlus } from "@tabler/icons-react";
+import { IconPlus, IconArrowLeft } from "@tabler/icons-react";
 import { useState, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
@@ -85,8 +87,16 @@ export default function CreateCustomerPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-
-      <p className="text-2xl font-bold mb-2">Crear nuevo Cliente</p>
+      <div className="flex items-center mb-4 gap-1">
+        <Link href="/dashboard/customers">
+          <Tooltip content="Volver" placement="bottom">
+            <Button variant="light" size="sm" isIconOnly>
+              <IconArrowLeft className="h-4" />
+            </Button>
+          </Tooltip>
+        </Link>
+        <p className="text-2xl font-bold">Crear nuevo Cliente</p>
+      </div>
       {error && <Code color='danger' className='text-wrap'>{error}</Code>}
 
       <div className="space-y-4 mt-4">
