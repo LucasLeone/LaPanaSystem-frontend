@@ -9,15 +9,18 @@ import {
   IconUsers,
   IconCreditCard,
   IconShoppingCart,
-  IconUser
+  IconUser,
+  IconArrowLeft
 } from "@tabler/icons-react";
 import { Link } from "@nextui-org/react";
 import { motion } from "framer-motion";
 import Cookies from "js-cookie";
+import { useRouter } from "next/navigation";
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState({});
+  const router = useRouter();
 
   useEffect(() => {
     const userData = Cookies.get("user");
@@ -31,12 +34,24 @@ export default function DashboardLayout({ children }) {
     }
   }, []);
 
+  const handleLogout = () => {
+    Cookies.remove("user");
+    Cookies.remove("access_token");
+    router.push("/auth/login");
+  }
+
   const menuItems = [
     { label: "Inicio", path: "/dashboard", icon: <IconHome /> },
     { label: "Productos", path: "/dashboard/products", icon: <IconPackage /> },
     { label: "Clientes", path: "/dashboard/customers", icon: <IconUsers /> },
     { label: "Gastos", path: "/dashboard/expenses", icon: <IconCreditCard /> },
     { label: "Ventas", path: "/dashboard/sales", icon: <IconShoppingCart /> },
+    { 
+      label: "Cerrar sesión",
+      onClick: handleLogout,
+      icon: <IconArrowLeft />,
+      className: "text-red-500 hover:text-red-700"
+    }
   ];
 
   return (
@@ -47,7 +62,12 @@ export default function DashboardLayout({ children }) {
             {sidebarOpen ? <Logo /> : <LogoIcon />}
             <div className="mt-8 flex flex-col gap-2">
               {menuItems.map((item) => (
-                <SidebarLink key={item.label} link={item} />
+                <SidebarLink
+                  key={item.label}
+                  link={item}
+                  onClick={item.onClick}
+                  className={item.className || ""}
+                />
               ))}
             </div>
           </div>
@@ -55,7 +75,7 @@ export default function DashboardLayout({ children }) {
             <SidebarLink
               link={{
                 label: `${user.first_name} ${user.last_name}`,
-                href: "/dashboard/profile",
+                path: "/dashboard/profile",
                 icon: <IconUser />,
               }}
             />
