@@ -9,7 +9,7 @@ import {
   Link,
   Tooltip,
 } from "@nextui-org/react";
-import { IconArrowLeft, IconEdit, IconX } from "@tabler/icons-react";
+import { IconArrowLeft, IconEdit } from "@tabler/icons-react";
 import { useState, useCallback, useEffect } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
@@ -181,7 +181,13 @@ export default function EditExpenseCategoryPage() {
           isDisabled={loading}
           fullWidth
         >
-          {loading ? <Spinner size="sm" /> : "Actualizar Categoría de Gastos"}
+          {loading ? (
+            <Spinner size="sm" />
+          ) : (
+            <>
+              <IconEdit className="h-4 mr-1" /> Actualizar Categoría
+            </>
+          )}
         </Button>
       </div>
     </div>

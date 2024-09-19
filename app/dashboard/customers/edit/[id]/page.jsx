@@ -10,7 +10,7 @@ import {
   Link,
   Tooltip
 } from "@nextui-org/react";
-import { IconCheck, IconArrowLeft } from "@tabler/icons-react";
+import { IconEdit, IconArrowLeft } from "@tabler/icons-react";
 import { useState, useEffect, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
@@ -167,7 +167,7 @@ export default function EditCustomerPage() {
           isDisabled={loading}
           fullWidth
         >
-          {loading ? <Spinner size="sm" /> : <><IconCheck className="h-4" /> Actualizar Cliente</>}
+          {loading ? <Spinner size="sm" /> : <><IconEdit className="h-4" /> Actualizar Cliente</>}
         </Button>
       </div>
     </div>

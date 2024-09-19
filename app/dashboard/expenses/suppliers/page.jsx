@@ -6,6 +6,7 @@ import {
   DropdownItem,
   DropdownMenu,
   DropdownTrigger,
+  getKeyValue,
   Input,
   Table,
   TableBody,
@@ -16,6 +17,7 @@ import {
   Pagination,
   Spinner,
   Tooltip,
+  DropdownSection,
   Modal,
   ModalContent,
   ModalHeader,
@@ -30,7 +32,7 @@ import {
   IconSearch,
   IconFilter,
   IconEdit,
-  IconX,
+  IconTrash,
   IconChevronUp,
   IconChevronDown,
 } from "@tabler/icons-react";
@@ -39,133 +41,149 @@ import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 
-export default function ExpenseCategoriesPage() {
-  const [categories, setCategories] = useState([]);
-  const [rowsPerPage] = useState(10); // Definido como constante
+export default function SuppliersPage() {
+  const [suppliers, setSuppliers] = useState([]);
+  const [rowsPerPage] = useState(10);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false); // Estado para manejar la eliminación
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryToDelete, setCategoryToDelete] = useState(null); // Categoría a eliminar
-  const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null }); // Añadido
+  const [supplierToDelete, setSupplierToDelete] = useState(null);
+  const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
 
   const router = useRouter();
-  const { isOpen, onOpen, onClose } = useDisclosure(); // Control del modal
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
-  // Fetch de categorías de gastos
+  // Función para formatear números de teléfono (opcional)
+  const formatPhoneNumber = useCallback((phone) => {
+    // Implementa aquí el formateo si lo deseas
+    return phone;
+  }, []);
+
+  // Función para formatear fechas (si aplica)
+  const formatDate = useCallback((dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }, []);
+
+  // Fetch de proveedores
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchSuppliers = async () => {
       setLoading(true);
       setError(null);
       const token = Cookies.get("access_token");
       try {
-        const response = await api.get("/expense-categories/", {
+        const response = await api.get("/suppliers/", {
           headers: {
             Authorization: `Token ${token}`,
           },
         });
-        setCategories(response.data);
+        setSuppliers(response.data);
       } catch (error) {
-        console.error("Error al cargar las categorías de gastos:", error);
-        setError("Error al cargar las categorías de gastos.");
+        console.error("Error al cargar los proveedores:", error);
+        setError("Error al cargar los proveedores.");
       } finally {
         setLoading(false);
       }
     };
-    fetchCategories();
+    fetchSuppliers();
   }, []);
 
-  // Manejo de cambio en la búsqueda (sin debounce)
+  // Manejo de búsqueda
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
     setPage(1);
   }, []);
 
-  // Función para abrir el modal y setear la categoría a eliminar
-  const handleDeleteClick = useCallback((category) => {
-    setCategoryToDelete(category);
+  // Manejo de eliminación
+  const handleDeleteClick = useCallback((supplier) => {
+    setSupplierToDelete(supplier);
     onOpen();
   }, [onOpen]);
 
-  // Función para eliminar la categoría
-  const handleDeleteCategory = useCallback(async () => {
-    if (!categoryToDelete) return;
+  const handleDeleteSupplier = useCallback(async () => {
+    if (!supplierToDelete) return;
 
     setDeleting(true);
     const token = Cookies.get("access_token");
     try {
-      // Asegúrate de que el endpoint de eliminación utiliza el ID de la categoría
-      await api.delete(`/expense-categories/${categoryToDelete.id}/`, {
+      await api.delete(`/suppliers/${supplierToDelete.id}/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
-      setCategories((prevCategories) => prevCategories.filter(c => c.id !== categoryToDelete.id));
+      setSuppliers((prevSuppliers) => prevSuppliers.filter(s => s.id !== supplierToDelete.id));
       onClose();
     } catch (error) {
-      console.error("Error al eliminar la categoría de gastos:", error);
-      setError("Error al eliminar la categoría de gastos.");
+      console.error("Error al eliminar proveedor:", error);
+      setError("Error al eliminar el proveedor.");
     } finally {
       setDeleting(false);
     }
-  }, [categoryToDelete, onClose]);
+  }, [supplierToDelete, onClose]);
 
+  // Definición de columnas
   const columns = [
     { key: 'id', label: '#', sortable: true },
     { key: 'name', label: 'Nombre', sortable: true },
-    { key: 'description', label: 'Descripción', sortable: false },
+    { key: 'phone_number', label: 'Teléfono', sortable: false },
+    { key: 'email', label: 'Email', sortable: true },
+    { key: 'address', label: 'Dirección', sortable: false },
     { key: 'actions', label: 'Acciones', sortable: false },
   ];
 
-  // Ordenamiento de las categorías según la columna seleccionada
-  const sortedCategories = useMemo(() => {
-    if (!sortDescriptor.column) return [...categories];
-    const sorted = [...categories].sort((a, b) => {
+  // Ordenamiento de proveedores
+  const sortedSuppliers = useMemo(() => {
+    if (!sortDescriptor.column) return [...suppliers];
+    const sorted = [...suppliers].sort((a, b) => {
       let aValue, bValue;
 
-      aValue = a[sortDescriptor.column];
-      bValue = b[sortDescriptor.column];
+      if (sortDescriptor.column === 'name' || sortDescriptor.column === 'email') {
+        aValue = a[sortDescriptor.column]?.toLowerCase() || '';
+        bValue = b[sortDescriptor.column]?.toLowerCase() || '';
+      } else {
+        aValue = a[sortDescriptor.column] || '';
+        bValue = b[sortDescriptor.column] || '';
+      }
 
-      if (typeof aValue === "string") {
-        return sortDescriptor.direction === "ascending"
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDescriptor.direction === 'ascending'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
 
-      if (aValue < bValue) {
-        return sortDescriptor.direction === "ascending" ? -1 : 1;
-      }
-      if (aValue > bValue) {
-        return sortDescriptor.direction === "ascending" ? 1 : -1;
-      }
       return 0;
     });
     return sorted;
-  }, [categories, sortDescriptor]);
+  }, [suppliers, sortDescriptor]);
 
   // Filtrado y búsqueda
-  const filteredCategories = useMemo(() => {
-    let filtered = [...sortedCategories];
+  const filteredSuppliers = useMemo(() => {
+    let filtered = [...sortedSuppliers];
 
-    // Aplicar búsqueda sobre los datos filtrados
     if (searchQuery) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(category =>
-        (category.name && category.name.toLowerCase().includes(query)) ||
-        (category.description && category.description.toLowerCase().includes(query))
+      filtered = filtered.filter(supplier =>
+        (supplier.name && supplier.name.toLowerCase().includes(query)) ||
+        (supplier.email && supplier.email.toLowerCase().includes(query)) ||
+        (supplier.phone_number && supplier.phone_number.toLowerCase().includes(query)) ||
+        (supplier.address && supplier.address.toLowerCase().includes(query))
       );
     }
 
     return filtered;
-  }, [sortedCategories, searchQuery]);
+  }, [sortedSuppliers, searchQuery]);
 
-  // Mapeo de categorías a filas de la tabla
+  // Mapeo de proveedores a filas de la tabla
   const rows = useMemo(() => (
-    filteredCategories.map(category => ({
-      id: category.id,
-      name: category.name,
-      description: category.description,
+    filteredSuppliers.map(supplier => ({
+      id: supplier.id,
+      name: supplier.name,
+      phone_number: formatPhoneNumber(supplier.phone_number),
+      email: supplier.email,
+      address: supplier.address,
       actions: (
         <div className="flex space-x-2">
           <Tooltip content="Editar">
@@ -174,8 +192,8 @@ export default function ExpenseCategoriesPage() {
               className="rounded-md"
               isIconOnly
               color="warning"
-              onPress={() => router.push(`/dashboard/expenses/categories/edit/${category.id}`)}
-              aria-label={`Editar categoría ${category.name}`} // Mejoras de accesibilidad
+              onPress={() => router.push(`/dashboard/expenses/suppliers/edit/${supplier.id}`)}
+              aria-label={`Editar proveedor ${supplier.name}`}
             >
               <IconEdit className="h-5" />
             </Button>
@@ -186,16 +204,16 @@ export default function ExpenseCategoriesPage() {
               className="rounded-md"
               isIconOnly
               color="danger"
-              onPress={() => handleDeleteClick(category)}
-              aria-label={`Eliminar categoría ${category.name}`} // Mejoras de accesibilidad
+              onPress={() => handleDeleteClick(supplier)}
+              aria-label={`Eliminar proveedor ${supplier.name}`}
             >
-              <IconX className="h-5" />
+              <IconTrash className="h-5" />
             </Button>
           </Tooltip>
         </div>
       )
     }))
-  ), [filteredCategories, handleDeleteClick, router]);
+  ), [filteredSuppliers, handleDeleteClick, router, formatPhoneNumber]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
@@ -224,13 +242,11 @@ export default function ExpenseCategoriesPage() {
   const handleSortChange = useCallback((columnKey) => {
     setSortDescriptor(prev => {
       if (prev.column === columnKey) {
-        // Toggle direction
         return {
           column: columnKey,
           direction: prev.direction === "ascending" ? "descending" : "ascending"
         };
       } else {
-        // Nueva columna, por defecto ascendente
         return {
           column: columnKey,
           direction: "ascending"
@@ -263,29 +279,29 @@ export default function ExpenseCategoriesPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
+
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
-        <p className="text-2xl font-bold mb-4 md:mb-0">Gastos | Categorías</p>
+        <p className="text-2xl font-bold mb-4 md:mb-0">Proveedores</p>
         <div className="flex flex-wrap gap-2">
-          <Tooltip content="Listar gastos">
-            <Link href="/dashboard/expenses">
+          <Tooltip content="Exportar proveedores">
+            <Button variant="bordered" className="rounded-md border-1.5">
+              <IconDownload className="h-4 mr-1" />
+              Exportar
+            </Button>
+          </Tooltip>
+          <Tooltip content="Listar proveedores">
+            <Link href="/dashboard/expenses/">
               <Button className="rounded-md bg-black text-white">
                 Gastos
               </Button>
             </Link>
           </Tooltip>
-          <Tooltip content="Listar proveedores">
-            <Link href="/dashboard/expenses/suppliers">
-              <Button className="rounded-md bg-black text-white">
-                Proveedores
-              </Button>
-            </Link>
-          </Tooltip>
-          <Tooltip content="Agregar nueva categoría de gastos">
-            <Link href="/dashboard/expenses/categories/create">
+          <Tooltip content="Agregar nuevo proveedor">
+            <Link href="/dashboard/expenses/suppliers/create">
               <Button className="rounded-md bg-black text-white">
                 <IconPlus className="h-4 mr-1" />
-                Nueva Categoría
+                Nuevo Proveedor
               </Button>
             </Link>
           </Tooltip>
@@ -295,23 +311,23 @@ export default function ExpenseCategoriesPage() {
       {/* Barra de Búsqueda */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
         <Input
-          placeholder="Buscar categorías"
+          placeholder="Buscar proveedores"
           startContent={<IconSearch className="h-4" />}
           radius="none"
           variant="underlined"
           value={searchQuery}
           onChange={handleSearchChange}
-          className="w-full md:w-1/3"
-          aria-label="Buscar categorías"
-          isClearable={true}
           onClear={() => {
             setSearchQuery('');
             setPage(1);
           }}
+          className="w-full md:w-1/3"
+          aria-label="Buscar proveedores"
+          isClearable={true}
         />
       </div>
 
-      {/* Tabla de Categorías */}
+      {/* Tabla de Proveedores */}
       <div className="overflow-x-auto border rounded-md">
         {loading ? (
           <div className="flex justify-center items-center p-6">
@@ -323,11 +339,11 @@ export default function ExpenseCategoriesPage() {
           </div>
         ) : currentItemsCount === 0 ? (
           <div className="text-center p-6">
-            No hay categorías para mostrar.
+            No hay proveedores para mostrar.
           </div>
         ) : (
           <Table
-            aria-label="Categorías de Gastos"
+            aria-label="Proveedores"
             className="border-none min-w-full"
             shadow="none"
             isCompact
@@ -348,13 +364,6 @@ export default function ExpenseCategoriesPage() {
               {(item) => (
                 <TableRow key={item.id}>
                   {(columnKey) => {
-                    if (columnKey === 'id') {
-                      return (
-                        <TableCell>
-                          {item.id}
-                        </TableCell>
-                      );
-                    }
                     if (columnKey === 'actions') {
                       return (
                         <TableCell>
@@ -364,7 +373,7 @@ export default function ExpenseCategoriesPage() {
                     }
                     return (
                       <TableCell className="min-w-[80px] sm:min-w-[100px]">
-                        {item[columnKey]}
+                        {getKeyValue(item, columnKey)}
                       </TableCell>
                     );
                   }}
@@ -379,7 +388,7 @@ export default function ExpenseCategoriesPage() {
       {!loading && !error && currentItemsCount !== 0 && (
         <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
-            Mostrando {currentItemsCount} de {totalItems} categorías
+            Mostrando {currentItemsCount} de {totalItems} proveedores
           </p>
           <Pagination
             total={totalPages}
@@ -390,7 +399,6 @@ export default function ExpenseCategoriesPage() {
             showShadow={true}
             color="primary"
             boundaryCount={1}
-            // siblingCount={1} // Eliminado para evitar la advertencia
           />
         </div>
       )}
@@ -403,7 +411,7 @@ export default function ExpenseCategoriesPage() {
               <ModalHeader className="flex flex-col gap-1">Confirmar Eliminación</ModalHeader>
               <ModalBody>
                 <p>
-                  ¿Estás seguro de que deseas eliminar la categoría <strong>{categoryToDelete?.name}</strong>?
+                  ¿Estás seguro de que deseas eliminar al proveedor <strong>{supplierToDelete?.name}</strong>?
                   Esta acción no se puede deshacer.
                 </p>
               </ModalBody>
@@ -418,7 +426,7 @@ export default function ExpenseCategoriesPage() {
                 </Button>
                 <Button
                   color="primary"
-                  onPress={handleDeleteCategory}
+                  onPress={handleDeleteSupplier}
                   disabled={deleting}
                 >
                   {deleting ? <Spinner size="sm" /> : "Eliminar"}

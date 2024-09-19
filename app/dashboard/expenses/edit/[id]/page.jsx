@@ -11,7 +11,7 @@ import {
   Tooltip,
   Textarea,
 } from "@nextui-org/react";
-import { IconPlus, IconArrowLeft } from "@tabler/icons-react";
+import { IconArrowLeft, IconEdit } from "@tabler/icons-react";
 import { useState, useCallback, useEffect } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
@@ -319,7 +319,7 @@ export default function EditExpensePage() {
             <Spinner size="sm" />
           ) : (
             <>
-              <IconPlus className="h-4 mr-1" /> Actualizar Gasto
+              <IconEdit className="h-4 mr-1" /> Actualizar Gasto
             </>
           )}
         </Button>
