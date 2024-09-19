@@ -6,7 +6,6 @@ import {
   DropdownItem,
   DropdownMenu,
   DropdownTrigger,
-  getKeyValue,
   Input,
   Table,
   TableBody,
@@ -17,7 +16,6 @@ import {
   Pagination,
   Spinner,
   Tooltip,
-  DropdownSection,
   Modal,
   ModalContent,
   ModalHeader,
@@ -40,59 +38,42 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
-import { capitalize } from "@/app/utils";
 
-export default function CustomersPage() {
-  const [customers, setCustomers] = useState([]);
-  const rowsPerPage = 10; // Definido como constante
+export default function ExpenseCategoriesPage() {
+  const [categories, setCategories] = useState([]);
+  const [rowsPerPage] = useState(10); // Definido como constante
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false); // Estado para manejar la eliminación
   const [error, setError] = useState(null);
-  const [filterKey, setFilterKey] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [customerToDelete, setCustomerToDelete] = useState(null); // Cliente a eliminar
+  const [categoryToDelete, setCategoryToDelete] = useState(null); // Categoría a eliminar
   const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null }); // Añadido
 
   const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure(); // Control del modal
 
-  const filterItems = [
-    { key: "minorista", label: "Minorista" },
-    { key: "mayorista", label: "Mayorista" },
-  ];
-
-  // Fetch de clientes
+  // Fetch de categorías de gastos
   useEffect(() => {
-    const fetchCustomers = async () => {
+    const fetchCategories = async () => {
       setLoading(true);
       setError(null);
       const token = Cookies.get("access_token");
       try {
-        const response = await api.get("/customers/", {
+        const response = await api.get("/expense-categories/", {
           headers: {
             Authorization: `Token ${token}`,
           },
         });
-        setCustomers(response.data);
+        setCategories(response.data);
       } catch (error) {
-        console.error(error);
-        setError("Error al cargar los clientes.");
+        console.error("Error al cargar las categorías de gastos:", error);
+        setError("Error al cargar las categorías de gastos.");
       } finally {
         setLoading(false);
       }
     };
-    fetchCustomers();
-  }, []);
-
-  // Manejo de acciones de filtro
-  const handleFilterAction = useCallback((key) => {
-    if (key === "none") {
-      setFilterKey(null);
-    } else {
-      setFilterKey(key);
-    }
-    setPage(1);
+    fetchCategories();
   }, []);
 
   // Manejo de cambio en la búsqueda (sin debounce)
@@ -101,50 +82,50 @@ export default function CustomersPage() {
     setPage(1);
   }, []);
 
-  // Función para abrir el modal y setear el cliente a eliminar
-  const handleDeleteClick = useCallback((customer) => {
-    setCustomerToDelete(customer);
+  // Función para abrir el modal y setear la categoría a eliminar
+  const handleDeleteClick = useCallback((category) => {
+    setCategoryToDelete(category);
     onOpen();
   }, [onOpen]);
 
-  // Función para eliminar el cliente
-  const handleDeleteCustomer = useCallback(async () => {
-    if (!customerToDelete) return;
+  // Función para eliminar la categoría
+  const handleDeleteCategory = useCallback(async () => {
+    if (!categoryToDelete) return;
 
     setDeleting(true);
     const token = Cookies.get("access_token");
     try {
-      await api.delete(`/customers/${customerToDelete.id}/`, {
+      // Asegúrate de que el endpoint de eliminación utiliza el ID de la categoría
+      await api.delete(`/expense-categories/${categoryToDelete.id}/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
-      setCustomers((prevCustomers) => prevCustomers.filter(c => c.id !== customerToDelete.id));
+      setCategories((prevCategories) => prevCategories.filter(c => c.id !== categoryToDelete.id));
       onClose();
     } catch (error) {
-      console.error("Error al eliminar cliente:", error);
-      setError("Error al eliminar el cliente.");
+      console.error("Error al eliminar la categoría de gastos:", error);
+      setError("Error al eliminar la categoría de gastos.");
     } finally {
       setDeleting(false);
     }
-  }, [customerToDelete, onClose]);
+  }, [categoryToDelete, onClose]);
 
   const columns = [
     { key: 'id', label: '#', sortable: true },
     { key: 'name', label: 'Nombre', sortable: true },
-    { key: 'phone', label: 'Celular', sortable: false },
-    { key: 'email', label: 'Correo', sortable: false },
-    { key: 'address', label: 'Dirección', sortable: false },
-    { key: 'customer_type', label: 'Tipo de cliente', sortable: true },
+    { key: 'description', label: 'Descripción', sortable: false },
     { key: 'actions', label: 'Acciones', sortable: false },
   ];
 
-  // Ordenamiento de los clientes según la columna seleccionada
-  const sortedCustomers = useMemo(() => {
-    if (!sortDescriptor.column) return [...customers];
-    const sorted = [...customers].sort((a, b) => {
-      const aValue = a[sortDescriptor.column];
-      const bValue = b[sortDescriptor.column];
+  // Ordenamiento de las categorías según la columna seleccionada
+  const sortedCategories = useMemo(() => {
+    if (!sortDescriptor.column) return [...categories];
+    const sorted = [...categories].sort((a, b) => {
+      let aValue, bValue;
+
+      aValue = a[sortDescriptor.column];
+      bValue = b[sortDescriptor.column];
 
       if (typeof aValue === "string") {
         return sortDescriptor.direction === "ascending"
@@ -161,43 +142,30 @@ export default function CustomersPage() {
       return 0;
     });
     return sorted;
-  }, [customers, sortDescriptor]);
+  }, [categories, sortDescriptor]);
 
   // Filtrado y búsqueda
-  const filteredCustomers = useMemo(() => {
-    let filtered = [...sortedCustomers];
-
-    // Filtrar por tipo de cliente si se ha seleccionado un filtro
-    if (filterKey) {
-      const normalizedFilterKey = filterKey.toLowerCase().trim();
-      filtered = filtered.filter(customer =>
-        customer.customer_type &&
-        customer.customer_type.toLowerCase().trim() === normalizedFilterKey
-      );
-    }
+  const filteredCategories = useMemo(() => {
+    let filtered = [...sortedCategories];
 
     // Aplicar búsqueda sobre los datos filtrados
     if (searchQuery) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(customer =>
-        (customer.name && customer.name.toLowerCase().includes(query)) ||
-        (customer.email && customer.email.toLowerCase().includes(query)) ||
-        (customer.phone_number && customer.phone_number.includes(searchQuery))
+      filtered = filtered.filter(category =>
+        (category.name && category.name.toLowerCase().includes(query)) ||
+        (category.description && category.description.toLowerCase().includes(query))
       );
     }
 
     return filtered;
-  }, [sortedCustomers, filterKey, searchQuery]);
+  }, [sortedCategories, searchQuery]);
 
-  // Mapeo de clientes a filas de la tabla
+  // Mapeo de categorías a filas de la tabla
   const rows = useMemo(() => (
-    filteredCustomers.map(customer => ({
-      id: customer.id,
-      name: customer.name,
-      phone: customer.phone_number,
-      email: customer.email,
-      address: customer.address,
-      customer_type: capitalize(customer.customer_type) || 'N/A',
+    filteredCategories.map(category => ({
+      id: category.id,
+      name: category.name,
+      description: category.description,
       actions: (
         <div className="flex space-x-2">
           <Tooltip content="Editar">
@@ -206,10 +174,10 @@ export default function CustomersPage() {
               className="rounded-md"
               isIconOnly
               color="warning"
-              onPress={() => router.push(`/dashboard/customers/edit/${customer.id}`)}
-              aria-label={`Editar cliente ${customer.name}`} // Mejoras de accesibilidad
+              onPress={() => router.push(`/dashboard/expenses/categories/edit/${category.id}`)}
+              aria-label={`Editar categoría ${category.name}`} // Mejoras de accesibilidad
             >
-              <IconEdit className="h-8" />
+              <IconEdit className="h-5" />
             </Button>
           </Tooltip>
           <Tooltip content="Eliminar">
@@ -218,16 +186,16 @@ export default function CustomersPage() {
               className="rounded-md"
               isIconOnly
               color="danger"
-              onPress={() => handleDeleteClick(customer)}
-              aria-label={`Eliminar cliente ${customer.name}`} // Mejoras de accesibilidad
+              onPress={() => handleDeleteClick(category)}
+              aria-label={`Eliminar categoría ${category.name}`} // Mejoras de accesibilidad
             >
-              <IconX className="h-8" />
+              <IconX className="h-5" />
             </Button>
           </Tooltip>
         </div>
       )
     }))
-  ), [filteredCustomers, handleDeleteClick, router]);
+  ), [filteredCategories, handleDeleteClick, router]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
@@ -297,64 +265,53 @@ export default function CustomersPage() {
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
-        <p className="text-2xl font-bold mb-4 md:mb-0">Clientes</p>
-        <div className="flex space-x-2">
-          <Tooltip content="Exportar clientes">
-            <Button variant="bordered" className="rounded-md border-1.5">
-              <IconDownload className="h-4 mr-1" />
-              Exportar
-            </Button>
+        <p className="text-2xl font-bold mb-4 md:mb-0">Gastos | Categorías</p>
+        <div className="flex flex-wrap gap-2">
+          <Tooltip content="Listar gastos">
+            <Link href="/dashboard/expenses">
+              <Button className="rounded-md bg-black text-white">
+                Gastos
+              </Button>
+            </Link>
           </Tooltip>
-          <Tooltip content="Agregar nuevo cliente">
-            <Link href="/dashboard/customers/create">
+          <Tooltip content="Listar proveedores">
+            <Link href="/dashboard/suppliers">
+              <Button className="rounded-md bg-black text-white">
+                Proveedores
+              </Button>
+            </Link>
+          </Tooltip>
+          <Tooltip content="Agregar nueva categoría de gastos">
+            <Link href="/dashboard/expenses/categories/create">
               <Button className="rounded-md bg-black text-white">
                 <IconPlus className="h-4 mr-1" />
-                Nuevo Cliente
+                Nueva Categoría
               </Button>
             </Link>
           </Tooltip>
         </div>
       </div>
 
-      {/* Barra de Búsqueda y Filtros */}
+      {/* Barra de Búsqueda */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
         <Input
-          placeholder="Buscar clientes"
+          placeholder="Buscar categorías"
           startContent={<IconSearch className="h-4" />}
           radius="none"
           variant="underlined"
           value={searchQuery}
           onChange={handleSearchChange}
           className="w-full md:w-1/3"
-          aria-label="Buscar clientes"
+          aria-label="Buscar categorías"
+          isClearable={true}
+          onClear={() => {
+            setSearchQuery('');
+            setPage(1);
+          }}
         />
-        <Dropdown>
-          <DropdownTrigger>
-            <Button
-              variant="bordered"
-              className={`rounded-md border-1.5 ${filterKey ? 'bg-gray-200' : ''}`}
-              aria-label="Filtros"
-            >
-              <IconFilter className="h-4 mr-1" />
-              {filterKey ? `${filterItems.find(item => item.key === filterKey)?.label || "Filtros"}` : "Tipo de Cliente"}
-            </Button>
-          </DropdownTrigger>
-          <DropdownMenu aria-label="Filters" onAction={handleFilterAction}>
-            <DropdownSection showDivider className="max-h-60 overflow-y-auto">
-              {filterItems.map(item => (
-                <DropdownItem key={item.key} value={item.key}>
-                  {item.label}
-                </DropdownItem>
-              ))}
-            </DropdownSection>
-            <DropdownItem key="none" value="none">
-              Quitar Filtro
-            </DropdownItem>
-          </DropdownMenu>
-        </Dropdown>
       </div>
 
-      {/* Tabla de Clientes */}
+      {/* Tabla de Categorías */}
       <div className="overflow-x-auto border rounded-md">
         {loading ? (
           <div className="flex justify-center items-center p-6">
@@ -366,11 +323,11 @@ export default function CustomersPage() {
           </div>
         ) : currentItemsCount === 0 ? (
           <div className="text-center p-6">
-            No hay clientes para mostrar.
+            No hay categorías para mostrar.
           </div>
         ) : (
           <Table
-            aria-label="Clientes"
+            aria-label="Categorías de Gastos"
             className="border-none min-w-full"
             shadow="none"
             isCompact
@@ -394,13 +351,20 @@ export default function CustomersPage() {
                     if (columnKey === 'id') {
                       return (
                         <TableCell>
-                          {getKeyValue(item, columnKey)}
+                          {item.id}
+                        </TableCell>
+                      );
+                    }
+                    if (columnKey === 'actions') {
+                      return (
+                        <TableCell>
+                          {item.actions}
                         </TableCell>
                       );
                     }
                     return (
                       <TableCell className="min-w-[80px] sm:min-w-[100px]">
-                        {getKeyValue(item, columnKey)}
+                        {item[columnKey]}
                       </TableCell>
                     );
                   }}
@@ -415,7 +379,7 @@ export default function CustomersPage() {
       {!loading && !error && currentItemsCount !== 0 && (
         <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
-            Mostrando {currentItemsCount} de {totalItems} clientes
+            Mostrando {currentItemsCount} de {totalItems} categorías
           </p>
           <Pagination
             total={totalPages}
@@ -426,7 +390,7 @@ export default function CustomersPage() {
             showShadow={true}
             color="primary"
             boundaryCount={1}
-            siblingCount={1}
+            // siblingCount={1} // Eliminado para evitar la advertencia
           />
         </div>
       )}
@@ -439,7 +403,7 @@ export default function CustomersPage() {
               <ModalHeader className="flex flex-col gap-1">Confirmar Eliminación</ModalHeader>
               <ModalBody>
                 <p>
-                  ¿Estás seguro de que deseas eliminar al cliente <strong>{customerToDelete?.name}</strong>?
+                  ¿Estás seguro de que deseas eliminar la categoría <strong>{categoryToDelete?.name}</strong>?
                   Esta acción no se puede deshacer.
                 </p>
               </ModalBody>
@@ -454,7 +418,7 @@ export default function CustomersPage() {
                 </Button>
                 <Button
                   color="primary"
-                  onPress={handleDeleteCustomer}
+                  onPress={handleDeleteCategory}
                   disabled={deleting}
                 >
                   {deleting ? <Spinner size="sm" /> : "Eliminar"}

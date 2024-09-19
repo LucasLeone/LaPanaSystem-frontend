@@ -257,8 +257,8 @@ export default function ProductsPage() {
       id: product.id,
       barcode: product.barcode,
       name: product.name,
-      retail_price: `${parseFloat(product.retail_price).toLocaleString('es-AR', {style:'currency', currency:'ARS'})}`,
-      wholesale_price: `${product.wholesale_price ? parseFloat(product.wholesale_price).toLocaleString('es-AR', {style:'currency', currency:'ARS'}) : ''}`,
+      retail_price: `${parseFloat(product.retail_price).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`,
+      wholesale_price: `${product.wholesale_price ? parseFloat(product.wholesale_price).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }) : ''}`,
       weight: product.weight ? `${parseFloat(product.weight).toLocaleString('es-AR')} ${product.weight_unit}` : '',
       category: product.category_details?.name || '',
       brand: product.brand_details?.name || '',
@@ -353,7 +353,7 @@ export default function ProductsPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-      
+
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Productos</p>
         <div className="flex flex-wrap gap-2">
@@ -419,7 +419,7 @@ export default function ProductsPage() {
               </Button>
             </DropdownTrigger>
             <DropdownMenu aria-label="Filtros de Categoría" onAction={handleFilterCategory}>
-              <DropdownSection showDivider>
+              <DropdownSection showDivider className="max-h-60 overflow-y-auto">
                 {categories.map(item => (
                   <DropdownItem key={item.id} value={item.id}>
                     {item.name}
@@ -446,7 +446,7 @@ export default function ProductsPage() {
               </Button>
             </DropdownTrigger>
             <DropdownMenu aria-label="Filtros de Marca" onAction={handleFilterBrand}>
-              <DropdownSection showDivider>
+              <DropdownSection showDivider className="max-h-60 overflow-y-auto">
                 {brands.map(item => (
                   <DropdownItem key={item.id} value={item.id}>
                     {item.name}

@@ -381,7 +381,7 @@ export default function ExpensesPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-      
+
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Gastos</p>
@@ -392,15 +392,15 @@ export default function ExpensesPage() {
               Exportar
             </Button>
           </Tooltip>
-          <Tooltip content="Agregar nuevo gasto">
-            <Link href="/dashboard/expenses/create">
+          <Tooltip content="Listar categorías">
+            <Link href="/dashboard/expenses/categories">
               <Button className="rounded-md bg-black text-white">
                 Categorías
               </Button>
             </Link>
           </Tooltip>
-          <Tooltip content="Agregar nuevo gasto">
-            <Link href="/dashboard/expenses/create">
+          <Tooltip content="Listar proveedores">
+            <Link href="/dashboard/expenses/suppliers">
               <Button className="rounded-md bg-black text-white">
                 Proveedores
               </Button>
@@ -449,8 +449,11 @@ export default function ExpensesPage() {
                   : "Categoría"}
               </Button>
             </DropdownTrigger>
-            <DropdownMenu aria-label="Filtros de Categoría" onAction={handleFilterCategory}>
-              <DropdownSection showDivider>
+            <DropdownMenu
+              aria-label="Filtros de Categoría"
+              onAction={handleFilterCategory}
+            >
+              <DropdownSection showDivider className="max-h-60 overflow-y-auto">
                 {categories.map(item => (
                   <DropdownItem key={item.id} value={item.id}>
                     {item.name}
@@ -477,8 +480,11 @@ export default function ExpensesPage() {
                   : "Proveedor"}
               </Button>
             </DropdownTrigger>
-            <DropdownMenu aria-label="Filtros de Proveedor" onAction={handleFilterSupplier}>
-              <DropdownSection showDivider>
+            <DropdownMenu
+              aria-label="Filtros de Proveedor"
+              onAction={handleFilterSupplier}
+            >
+              <DropdownSection showDivider className="max-h-60 overflow-y-auto">
                 {suppliers.map(item => (
                   <DropdownItem key={item.id} value={item.id}>
                     {item.name}
@@ -571,8 +577,8 @@ export default function ExpensesPage() {
             size="sm"
             showShadow={true}
             color="primary"
-            // boundaryCount={1}
-            // siblingCount={1}
+            boundaryCount={1}
+          // siblingCount={1} // Eliminado para evitar la advertencia
           />
         </div>
       )}
