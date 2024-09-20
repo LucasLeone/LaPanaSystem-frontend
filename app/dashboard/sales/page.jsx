@@ -269,7 +269,6 @@ export default function SalesPage() {
       );
     }
 
-    console.log('Filtered sales:', filtered); // Para depuración
 
     return filtered;
   }, [sortedSales, filterState, filterSaleType, filterPaymentMethod, searchQuery]);
@@ -389,11 +388,19 @@ export default function SalesPage() {
               Exportar
             </Button>
           </Tooltip>
-          <Tooltip content="Agregar nueva venta">
-            <Link href="/dashboard/sales/create">
+          <Tooltip content="Agregar nueva venta unicamente con total">
+            <Link href="/dashboard/sales/create-without-details">
               <Button className="rounded-md bg-black text-white">
                 <IconPlus className="h-4 mr-1" />
-                Nueva Venta
+                Nueva Venta sin Detalles
+              </Button>
+            </Link>
+          </Tooltip>
+          <Tooltip content="Agregar nueva venta con detalles de venta">
+            <Link href="/dashboard/sales/create-with-details">
+              <Button className="rounded-md bg-black text-white">
+                <IconPlus className="h-4 mr-1" />
+                Nueva Venta con Detalles
               </Button>
             </Link>
           </Tooltip>
@@ -572,8 +579,6 @@ export default function SalesPage() {
             size="sm"
             showShadow={true}
             color="primary"
-            boundaryCount={1}
-            siblingCount={1}
           />
         </div>
       )}
