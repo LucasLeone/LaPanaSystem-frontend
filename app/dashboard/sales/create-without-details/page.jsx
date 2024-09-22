@@ -137,7 +137,7 @@ export default function CreateSalePage() {
             </Button>
           </Tooltip>
         </Link>
-        <p className="text-2xl font-bold">Crear Nueva Venta</p>
+        <p className="text-2xl font-bold">Crear nueva Venta</p>
       </div>
       {error && <Code color="danger" className="text-wrap">{error}</Code>}
 
