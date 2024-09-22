@@ -15,6 +15,7 @@ import {
   TableBody,
   TableRow,
   TableCell,
+  Checkbox
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft, IconTrash } from "@tabler/icons-react";
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -45,6 +46,7 @@ export default function CreateSalePage() {
   const [saleType, setSaleType] = useState("minorista");
   const [date, setDate] = useState(getTodayDate());
   const [paymentMethod, setPaymentMethod] = useState("efectivo");
+  const [needsDelivery, setNeedsDelivery] = useState(false);
 
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -169,6 +171,7 @@ export default function CreateSalePage() {
     const saleData = {
       customer: customer,
       sale_type: saleType,
+      needs_delivery: needsDelivery,
       sale_details: saleDetails.map((detail) => ({
         product: detail.product,
         quantity: parseFloat(detail.quantity),
@@ -318,6 +321,16 @@ export default function CreateSalePage() {
             </SelectItem>
           ))}
         </Select>
+
+        {/* Necesita Envío */}
+        <Checkbox
+          checked={needsDelivery}
+          onChange={(e) => setNeedsDelivery(e.target.checked)}
+          label="Necesita Envío"
+          aria-label="Necesita Envío"
+        >
+          Necesita Envío
+        </Checkbox>
 
         {/* Detalles de la Venta */}
         <div>
