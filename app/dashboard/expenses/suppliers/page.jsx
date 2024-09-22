@@ -2,10 +2,6 @@
 
 import {
   Button,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
   getKeyValue,
   Input,
   Table,
@@ -17,7 +13,6 @@ import {
   Pagination,
   Spinner,
   Tooltip,
-  DropdownSection,
   Modal,
   ModalContent,
   ModalHeader,
@@ -30,7 +25,6 @@ import {
   IconDownload,
   IconPlus,
   IconSearch,
-  IconFilter,
   IconEdit,
   IconTrash,
   IconChevronUp,
@@ -51,6 +45,7 @@ export default function SuppliersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [supplierToDelete, setSupplierToDelete] = useState(null);
   const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
+  const [user, setUser] = useState(null);
 
   const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -89,6 +84,16 @@ export default function SuppliersPage() {
       }
     };
     fetchSuppliers();
+
+    const userData = Cookies.get("user");
+    if (userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+        Cookies.remove("user");
+      }
+    }
   }, []);
 
   // Manejo de búsqueda
@@ -206,6 +211,7 @@ export default function SuppliersPage() {
               color="danger"
               onPress={() => handleDeleteClick(supplier)}
               aria-label={`Eliminar proveedor ${supplier.name}`}
+              isDisabled={user.user_type != 'admin'}
             >
               <IconTrash className="h-5" />
             </Button>

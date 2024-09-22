@@ -32,7 +32,7 @@ import {
   IconSearch,
   IconFilter,
   IconEdit,
-  IconX,
+  IconTrash,
   IconChevronUp,
   IconChevronDown,
 } from "@tabler/icons-react";
@@ -40,7 +40,6 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
-import { capitalize } from "@/app/utils";
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState([]);
@@ -53,6 +52,7 @@ export default function EmployeesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [employeeToDelete, setEmployeeToDelete] = useState(null); // Empleado a eliminar
   const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null }); // Añadido
+  const [user, setUser] = useState(null);
 
   const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure(); // Control del modal
@@ -93,6 +93,16 @@ export default function EmployeesPage() {
       }
     };
     fetchEmployees();
+
+    const userData = Cookies.get("user");
+    if (userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+        Cookies.remove("user");
+      }
+    }
   }, []);
 
   // Manejo de acciones de filtro
@@ -235,14 +245,15 @@ export default function EmployeesPage() {
               color="danger"
               onPress={() => handleDeleteClick(employee)}
               aria-label={`Eliminar empleado ${employee.username}`} // Mejoras de accesibilidad
+              isDisabled={user.user_type != 'admin'}
             >
-              <IconX className="h-8" />
+              <IconTrash className="h-8" />
             </Button>
           </Tooltip>
         </div>
       )
     }))
-  ), [filteredEmployees, handleDeleteClick, router, USER_TYPE_LABELS]);
+  ), [filteredEmployees, USER_TYPE_LABELS, router, handleDeleteClick]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);

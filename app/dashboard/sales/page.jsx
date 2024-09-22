@@ -33,7 +33,7 @@ import {
   IconPlus,
   IconSearch,
   IconFilter,
-  IconX,
+  IconTrash,
   IconChevronUp,
   IconChevronDown,
 } from "@tabler/icons-react";
@@ -310,7 +310,7 @@ export default function SalesPage() {
               onPress={() => handleDeleteClick(sale)}
               aria-label={`Eliminar venta ${sale.id}`}
             >
-              <IconX className="h-5" />
+              <IconTrash className="h-5" />
             </Button>
           </Tooltip>
         </div>

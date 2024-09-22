@@ -2,10 +2,6 @@
 
 import {
   Button,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
   Input,
   Table,
   TableBody,
@@ -25,12 +21,10 @@ import {
   Link,
 } from "@nextui-org/react";
 import {
-  IconDownload,
   IconPlus,
   IconSearch,
-  IconFilter,
   IconEdit,
-  IconX,
+  IconTrash,
   IconChevronUp,
   IconChevronDown,
 } from "@tabler/icons-react";
@@ -49,6 +43,7 @@ export default function ExpenseCategoriesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryToDelete, setCategoryToDelete] = useState(null); // Categoría a eliminar
   const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null }); // Añadido
+  const [user, setUser] = useState(null);
 
   const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure(); // Control del modal
@@ -74,6 +69,16 @@ export default function ExpenseCategoriesPage() {
       }
     };
     fetchCategories();
+
+    const userData = Cookies.get("user");
+    if (userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+        Cookies.remove("user");
+      }
+    }
   }, []);
 
   // Manejo de cambio en la búsqueda (sin debounce)
@@ -188,8 +193,9 @@ export default function ExpenseCategoriesPage() {
               color="danger"
               onPress={() => handleDeleteClick(category)}
               aria-label={`Eliminar categoría ${category.name}`} // Mejoras de accesibilidad
+              isDisabled={user.user_type != 'admin'}
             >
-              <IconX className="h-5" />
+              <IconTrash className="h-5" />
             </Button>
           </Tooltip>
         </div>

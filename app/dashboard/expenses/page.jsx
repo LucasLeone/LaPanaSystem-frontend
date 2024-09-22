@@ -32,9 +32,9 @@ import {
   IconSearch,
   IconFilter,
   IconEdit,
-  IconX,
   IconChevronUp,
   IconChevronDown,
+  IconTrash
 } from "@tabler/icons-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/app/axios";
@@ -55,6 +55,7 @@ export default function ExpensesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expenseToDelete, setExpenseToDelete] = useState(null);
   const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
+  const [user, setUser] = useState(null);
 
   const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -93,6 +94,16 @@ export default function ExpensesPage() {
       }
     };
     fetchExpenses();
+
+    const userData = Cookies.get("user");
+    if (userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+        Cookies.remove("user");
+      }
+    }
   }, []);
 
   // Fetch de categorías
@@ -308,8 +319,9 @@ export default function ExpensesPage() {
               color="danger"
               onPress={() => handleDeleteClick(expense)}
               aria-label={`Eliminar gasto ${expense.description}`}
+              isDisabled={user.user_type != 'admin'}
             >
-              <IconX className="h-5" />
+              <IconTrash className="h-5" />
             </Button>
           </Tooltip>
         </div>

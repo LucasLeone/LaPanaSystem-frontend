@@ -32,7 +32,7 @@ import {
   IconSearch,
   IconFilter,
   IconEdit,
-  IconX,
+  IconTrash,
   IconChevronUp,
   IconChevronDown,
 } from "@tabler/icons-react";
@@ -53,6 +53,7 @@ export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [customerToDelete, setCustomerToDelete] = useState(null); // Cliente a eliminar
   const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null }); // Añadido
+  const [user, setUser] = useState(null);
 
   const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure(); // Control del modal
@@ -83,6 +84,16 @@ export default function CustomersPage() {
       }
     };
     fetchCustomers();
+
+    const userData = Cookies.get("user");
+    if (userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+        Cookies.remove("user");
+      }
+    }
   }, []);
 
   // Manejo de acciones de filtro
@@ -220,8 +231,9 @@ export default function CustomersPage() {
               color="danger"
               onPress={() => handleDeleteClick(customer)}
               aria-label={`Eliminar cliente ${customer.name}`} // Mejoras de accesibilidad
+              isDisabled={user.user_type != 'admin'}
             >
-              <IconX className="h-8" />
+              <IconTrash className="h-8" />
             </Button>
           </Tooltip>
         </div>
