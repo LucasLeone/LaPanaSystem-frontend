@@ -110,6 +110,12 @@ export default function CreateProductPage() {
       return;
     }
 
+    if (name.length > 50) {
+      setError("El nombre del producto no puede tener más de 50 caracteres.");
+      setLoading(false);
+      return;
+    }
+
     // Preparar Datos para Enviar
     const productData = {
       barcode,

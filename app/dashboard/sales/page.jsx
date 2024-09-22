@@ -635,7 +635,7 @@ export default function SalesPage() {
                     <p><strong>Estado:</strong> {STATE_CHOICES.find(item => item.id === saleToView?.state)?.name || saleToView?.state}</p>
                   </AccordionItem>
                   <AccordionItem key="2" aria-label="Items de la Venta" title="Items de la Venta">
-                    <div className="overflow-x-auto max-h-60">
+                    <div className="overflow-x-auto max-h-60 border rounded-md">
                       {saleToView?.sale_details && saleToView.sale_details.length > 0 ? (
                         <Table
                           aria-label="Items de la Venta"
@@ -645,10 +645,10 @@ export default function SalesPage() {
                           removeWrapper
                         >
                           <TableHeader>
-                            <TableColumn>Producto</TableColumn>
-                            <TableColumn>Cantidad</TableColumn>
-                            <TableColumn>Precio</TableColumn>
-                            <TableColumn>Subtotal</TableColumn>
+                            <TableColumn className="bg-white text-bold border-b-1">Producto</TableColumn>
+                            <TableColumn className="bg-white text-bold border-b-1">Cantidad</TableColumn>
+                            <TableColumn className="bg-white text-bold border-b-1">Precio</TableColumn>
+                            <TableColumn className="bg-white text-bold border-b-1">Subtotal</TableColumn>
                           </TableHeader>
                           <TableBody>
                             {saleToView.sale_details.map((item, index) => (
