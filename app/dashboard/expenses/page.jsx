@@ -319,7 +319,7 @@ export default function ExpensesPage() {
               color="danger"
               onPress={() => handleDeleteClick(expense)}
               aria-label={`Eliminar gasto ${expense.description}`}
-              isDisabled={user.user_type != 'admin'}
+              isDisabled={user.user_type != 'ADMIN'}
             >
               <IconTrash className="h-5" />
             </Button>

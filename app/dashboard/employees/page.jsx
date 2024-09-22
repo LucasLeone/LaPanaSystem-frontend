@@ -245,7 +245,7 @@ export default function EmployeesPage() {
               color="danger"
               onPress={() => handleDeleteClick(employee)}
               aria-label={`Eliminar empleado ${employee.username}`} // Mejoras de accesibilidad
-              isDisabled={user.user_type != 'admin'}
+              isDisabled={user.user_type != 'ADMIN'}
             >
               <IconTrash className="h-8" />
             </Button>

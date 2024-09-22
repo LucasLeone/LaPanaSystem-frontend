@@ -179,8 +179,6 @@ export default function EditProductPage() {
       productData.description = "";
     }
 
-    console.log("Datos Actualizados del Producto:", productData);
-
     const token = Cookies.get("access_token");
     try {
       await api.put(`/products/${slug}/`, productData, {

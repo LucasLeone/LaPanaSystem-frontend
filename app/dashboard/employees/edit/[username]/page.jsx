@@ -144,7 +144,6 @@ export default function EditEmployeePage() {
       employeeData.password = password.trim();
     }
 
-    console.log("Datos del Empleado:", employeeData);
     const token = Cookies.get("access_token");
     try {
       await api.put(`/users/${employeeUsername}/`, employeeData, {

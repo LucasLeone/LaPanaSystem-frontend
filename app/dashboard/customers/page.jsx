@@ -54,7 +54,7 @@ export default function CustomersPage() {
   const [customerToDelete, setCustomerToDelete] = useState(null); // Cliente a eliminar
   const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null }); // Añadido
   const [user, setUser] = useState(null);
-
+  
   const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure(); // Control del modal
 
@@ -231,7 +231,7 @@ export default function CustomersPage() {
               color="danger"
               onPress={() => handleDeleteClick(customer)}
               aria-label={`Eliminar cliente ${customer.name}`} // Mejoras de accesibilidad
-              isDisabled={user.user_type != 'admin'}
+              isDisabled={user.user_type != 'ADMIN'}
             >
               <IconTrash className="h-8" />
             </Button>
@@ -437,8 +437,6 @@ export default function CustomersPage() {
             size="sm"
             showShadow={true}
             color="primary"
-            boundaryCount={1}
-            siblingCount={1}
           />
         </div>
       )}

@@ -211,7 +211,7 @@ export default function SuppliersPage() {
               color="danger"
               onPress={() => handleDeleteClick(supplier)}
               aria-label={`Eliminar proveedor ${supplier.name}`}
-              isDisabled={user.user_type != 'admin'}
+              isDisabled={user.user_type != 'ADMIN'}
             >
               <IconTrash className="h-5" />
             </Button>

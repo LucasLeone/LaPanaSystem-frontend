@@ -295,7 +295,7 @@ export default function ProductsPage() {
               color="danger"
               onPress={() => handleDeleteClick(product)}
               aria-label={`Eliminar producto ${product.name}`}
-              isDisabled={user.user_type != 'admin'}
+              isDisabled={user.user_type != 'ADMIN'}
             >
               <IconTrash className="h-5" />
             </Button>

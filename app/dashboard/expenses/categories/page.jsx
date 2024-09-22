@@ -193,7 +193,7 @@ export default function ExpenseCategoriesPage() {
               color="danger"
               onPress={() => handleDeleteClick(category)}
               aria-label={`Eliminar categoría ${category.name}`} // Mejoras de accesibilidad
-              isDisabled={user.user_type != 'admin'}
+              isDisabled={user.user_type != 'ADMIN'}
             >
               <IconTrash className="h-5" />
             </Button>

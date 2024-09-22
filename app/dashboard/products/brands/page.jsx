@@ -193,7 +193,7 @@ export default function BrandsPage() {
               color="danger"
               onPress={() => handleDeleteClick(brand)}
               aria-label={`Eliminar marca ${brand.name}`} // Mejoras de accesibilidad
-              isDisabled={user.user_type != 'admin'}
+              isDisabled={user.user_type != 'ADMIN'}
             >
               <IconTrash className="h-5" />
             </Button>
