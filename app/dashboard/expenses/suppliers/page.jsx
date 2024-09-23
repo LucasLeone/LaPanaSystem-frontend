@@ -370,6 +370,13 @@ export default function SuppliersPage() {
               {(item) => (
                 <TableRow key={item.id}>
                   {(columnKey) => {
+                    if (columnKey === 'id') {
+                      return (
+                        <TableCell>
+                          {item.id}
+                        </TableCell>
+                      );
+                    }
                     if (columnKey === 'actions') {
                       return (
                         <TableCell>

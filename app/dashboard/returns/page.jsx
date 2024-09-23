@@ -3,29 +3,28 @@
 import {
   Button,
   Input,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-  Pagination,
   Spinner,
+  Link,
   Tooltip,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Pagination,
   Modal,
   ModalContent,
   ModalHeader,
   ModalBody,
   ModalFooter,
   useDisclosure,
-  Link,
-  Accordion,
-  AccordionItem,
-  DatePicker,
-  DateRangePicker,
   Autocomplete,
   AutocompleteItem,
-  getKeyValue,
+  DatePicker,
+  DateRangePicker,
+  Accordion,
+  AccordionItem
 } from "@nextui-org/react";
 import {
   IconDownload,
@@ -39,7 +38,6 @@ import {
 import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
-import { useRouter } from "next/navigation";
 
 export default function ReturnsPage() {
   const [returns, setReturns] = useState([]);
@@ -73,7 +71,6 @@ export default function ReturnsPage() {
   });
   const [customers, setCustomers] = useState([]);
 
-  const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
     isOpen: isViewOpen,
@@ -104,7 +101,7 @@ export default function ReturnsPage() {
     filterDateRange,
   ]);
 
-  // Fetch Returns
+  // Fetch Returns (sin incluir searchQuery)
   useEffect(() => {
     const fetchReturns = async () => {
       setLoading(true);
@@ -112,7 +109,7 @@ export default function ReturnsPage() {
       const token = Cookies.get("access_token");
       try {
         const params = {
-          search: searchQuery || undefined,
+          // Removemos 'search' de los parámetros
           customer: filterCustomer || undefined,
           min_total: filterMinTotal || undefined,
           max_total: filterMaxTotal || undefined,
@@ -140,7 +137,7 @@ export default function ReturnsPage() {
     };
     fetchReturns();
   }, [
-    searchQuery,
+    // Removemos 'searchQuery' de las dependencias
     filterCustomer,
     filterMinTotal,
     filterMaxTotal,
@@ -278,9 +275,20 @@ export default function ReturnsPage() {
     }
   }, [returns, sortDescriptor]);
 
+  // Filtrar los returns por searchQuery en el frontend
+  const filteredReturns = useMemo(() => {
+    if (!searchQuery) return sortedReturns;
+    const lowerSearch = searchQuery.toLowerCase();
+    return sortedReturns.filter(
+      (r) =>
+        r.customer_details?.name.toLowerCase().includes(lowerSearch) ||
+        String(r.id).includes(lowerSearch)
+    );
+  }, [sortedReturns, searchQuery]);
+
   const rows = useMemo(
     () =>
-      sortedReturns.map((returnItem) => ({
+      filteredReturns.map((returnItem) => ({
         id: returnItem.id,
         date: new Date(returnItem.date).toLocaleDateString("es-AR", {
           year: "numeric",
@@ -321,7 +329,7 @@ export default function ReturnsPage() {
           </div>
         ),
       })),
-    [sortedReturns, handleDeleteClick, handleViewClick]
+    [filteredReturns, handleDeleteClick, handleViewClick]
   );
 
   const totalItems = rows.length;
@@ -485,21 +493,24 @@ export default function ReturnsPage() {
                 </TableColumn>
               )}
             </TableHeader>
-            <TableBody items={currentItems}>
-              {(item) => (
+            <TableBody>
+              {currentItems.map((item) => (
                 <TableRow key={item.id}>
-                  {(columnKey) => {
-                    if (columnKey === "actions") {
-                      return <TableCell>{item.actions}</TableCell>;
+                  {columns.map((column) => {
+                    if (column.key === "id") {
+                      return <TableCell key={column.key}>{item.id}</TableCell>;
+                    }
+                    if (column.key === "actions") {
+                      return <TableCell key={column.key}>{item.actions}</TableCell>;
                     }
                     return (
-                      <TableCell className="min-w-[80px] sm:min-w-[100px]">
-                        {getKeyValue(item, columnKey)}
+                      <TableCell key={column.key} className="min-w-[80px] sm:min-w-[100px]">
+                        {item[column.key]}
                       </TableCell>
                     );
-                  }}
+                  })}
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
         )}
@@ -619,7 +630,7 @@ export default function ReturnsPage() {
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={clearFilters}>
+                <Button variant="light" onPress={clearFilters} color="warning">
                   Limpiar Filtros
                 </Button>
                 <Button onPress={applyFilters} color="primary">

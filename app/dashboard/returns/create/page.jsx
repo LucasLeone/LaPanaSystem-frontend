@@ -5,8 +5,6 @@ import {
   Input,
   Spinner,
   Code,
-  Select,
-  SelectItem,
   Link,
   Tooltip,
   Table,
@@ -15,9 +13,8 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Checkbox,
   Autocomplete,
-  AutocompleteItem
+  AutocompleteItem,
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft, IconTrash } from "@tabler/icons-react";
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -25,40 +22,25 @@ import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 
-const PAYMENT_METHOD_CHOICES = [
-  { id: "efectivo", name: "Efectivo" },
-  { id: "tarjeta", name: "Tarjeta" },
-  { id: "transferencia", name: "Transferencia" },
-  { id: "qr", name: "QR" },
-  { id: "cuenta_corriente", name: "Cuenta Corriente" },
-];
-
-const SALE_TYPE_CHOICES = [
-  { id: "minorista", name: "Minorista" },
-  { id: "mayorista", name: "Mayorista" },
-];
-
-export default function CreateSalePage() {
+export default function CreateReturnPage() {
   const [loading, setLoading] = useState(false);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState(null);
 
   const [customer, setCustomer] = useState(null); // ID del cliente
-  const [saleType, setSaleType] = useState("minorista");
   const [date, setDate] = useState(getTodayDate());
-  const [paymentMethod, setPaymentMethod] = useState("efectivo");
-  const [needsDelivery, setNeedsDelivery] = useState(false);
+
+  const [returnDetails, setReturnDetails] = useState([
+    { product: null, quantity: "" },
+  ]);
 
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
 
-  const [saleDetails, setSaleDetails] = useState([
-    { product: null, quantity: "" },
-  ]);
-
   const router = useRouter();
 
+  // Función para obtener la fecha de hoy en formato YYYY-MM-DD
   function getTodayDate() {
     const today = new Date();
     const year = today.getFullYear();
@@ -67,6 +49,7 @@ export default function CreateSalePage() {
     return `${year}-${month}-${day}`;
   }
 
+  // Validación de Cantidad (acepta decimales)
   const isValidQuantity = (quantity) => {
     return /^\d+(\.\d{1,2})?$/.test(quantity) && parseFloat(quantity) > 0;
   };
@@ -111,9 +94,51 @@ export default function CreateSalePage() {
     fetchProducts();
   }, []);
 
+  // Validación de Campos
+  const isValidReturn = () => {
+    if (!customer) {
+      setError("Por favor, selecciona un cliente.");
+      return false;
+    }
+
+    for (let i = 0; i < returnDetails.length; i++) {
+      const detail = returnDetails[i];
+      if (!detail.product) {
+        setError(`Por favor, selecciona un producto en el detalle ${i + 1}.`);
+        return false;
+      }
+      if (!detail.quantity || !isValidQuantity(detail.quantity)) {
+        setError(
+          `Por favor, ingresa una cantidad válida en el detalle ${i + 1}.`
+        );
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Manejar Cambios en los Detalles de Devolución
+  const handleDetailChange = (index, field, value) => {
+    const newDetails = [...returnDetails];
+    newDetails[index][field] = value;
+    setReturnDetails(newDetails);
+  };
+
+  // Agregar un Nuevo Detalle de Devolución
+  const addReturnDetail = () => {
+    setReturnDetails([...returnDetails, { product: null, quantity: "" }]);
+  };
+
+  // Eliminar un Detalle de Devolución
+  const removeReturnDetail = (index) => {
+    const newDetails = returnDetails.filter((_, i) => i !== index);
+    setReturnDetails(newDetails);
+  };
+
   // Calcular precios y subtotales sin actualizar el estado
-  const saleDetailsWithPrices = useMemo(() => {
-    return saleDetails.map((detail) => {
+  const returnDetailsWithPrices = useMemo(() => {
+    return returnDetails.map((detail) => {
       if (!detail.product || !isValidQuantity(detail.quantity)) {
         return { ...detail, price: 0, subtotal: 0 };
       }
@@ -122,130 +147,87 @@ export default function CreateSalePage() {
         return { ...detail, price: 0, subtotal: 0 };
       }
 
-      // Lógica para determinar el precio
-      let price = 0;
-      if (saleType === "mayorista") {
-        if (product.wholesale_price && parseFloat(product.wholesale_price) > 0) {
-          price = parseFloat(product.wholesale_price);
-        } else {
-          price = parseFloat(product.retail_price);
-        }
-      } else {
-        price = parseFloat(product.retail_price);
-      }
-
+      // Puedes agregar lógica adicional para calcular el precio si es necesario
+      const price = parseFloat(product.wholesale_price) || 0;
       const quantity = parseFloat(detail.quantity);
       const subtotal = price * quantity;
       return { ...detail, price, subtotal };
     });
-  }, [saleType, saleDetails, products]);
+  }, [returnDetails, products]);
 
   // Calcular total
-  const total = saleDetailsWithPrices.reduce((acc, detail) => acc + detail.subtotal, 0);
+  const total = returnDetailsWithPrices.reduce(
+    (acc, detail) => acc + detail.subtotal,
+    0
+  );
 
-  const handleCreateSale = useCallback(async () => {
+  // Manejar Creación de Devolución
+  const handleCreateReturn = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    // Validaciones
-    if (!customer || !saleType) {
-      setError("Por favor, completa todos los campos requeridos.");
+    if (!isValidReturn()) {
       setLoading(false);
       return;
     }
 
-    // Validar sale_details
-    for (let i = 0; i < saleDetails.length; i++) {
-      const detail = saleDetails[i];
-      if (!detail.product || !detail.quantity) {
-        setError(`Por favor, completa todos los campos requeridos en el detalle ${i + 1}.`);
-        setLoading(false);
-        return;
-      }
-      if (!isValidQuantity(detail.quantity)) {
-        setError(`La cantidad en el detalle ${i + 1} debe ser un número positivo.`);
-        setLoading(false);
-        return;
-      }
-    }
-
     // Preparar Datos para Enviar
-    const saleData = {
+    const returnData = {
       customer: customer,
-      sale_type: saleType,
-      needs_delivery: needsDelivery,
-      sale_details: saleDetails.map((detail) => ({
-        product: detail.product,
+      // Solo incluir la fecha si está seleccionada
+      ...(date ? { date: new Date(date).toISOString().split("T")[0] } : {}),
+      return_details: returnDetails.map((detail) => ({
+        product: parseInt(detail.product, 10),
         quantity: parseFloat(detail.quantity),
       })),
     };
 
-    if (date) {
-      saleData.date = date;
-    }
-
-    if (paymentMethod) {
-      saleData.payment_method = paymentMethod;
-    }
-
     const token = Cookies.get("access_token");
     try {
-      await api.post("/sales/", saleData, {
+      await api.post("/returns/", returnData, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
 
       // Redireccionar tras la creación exitosa
-      router.push("/dashboard/sales");
+      router.push("/dashboard/returns");
     } catch (error) {
-      console.error("Error al crear la venta:", error);
+      console.error("Error al crear la devolución:", error);
       if (error.response && error.response.data) {
         // Mostrar errores específicos de la API
         const apiErrors = Object.values(error.response.data).flat();
         setError(apiErrors.join(" "));
       } else {
-        setError("Error al crear la venta.");
+        setError("Error al crear la devolución.");
       }
     } finally {
       setLoading(false);
     }
-  }, [customer, saleType, saleDetails, date, paymentMethod, router]);
-
-  const handleAddSaleDetail = () => {
-    setSaleDetails([...saleDetails, { product: null, quantity: "" }]);
-  };
-
-  const handleRemoveSaleDetail = (index) => {
-    const newSaleDetails = [...saleDetails];
-    newSaleDetails.splice(index, 1);
-    setSaleDetails(newSaleDetails);
-  };
-
-  const handleSaleDetailChange = (index, field, value) => {
-    const newSaleDetails = [...saleDetails];
-    newSaleDetails[index][field] = value;
-    setSaleDetails(newSaleDetails);
-  };
+  }, [customer, date, returnDetails, router]);
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-      {/* Título y Botón de Volver */}
+      {/* Header */}
       <div className="flex items-center mb-4 gap-1">
-        <Link href="/dashboard/sales">
+        <Link href="/dashboard/returns">
           <Tooltip content="Volver" placement="bottom">
             <Button variant="light" size="sm" isIconOnly>
               <IconArrowLeft className="h-4" />
             </Button>
           </Tooltip>
         </Link>
-        <p className="text-2xl font-bold">Crear nueva Venta</p>
+        <p className="text-2xl font-bold">Crear nueva Devolución</p>
       </div>
 
       {/* Mostrar Errores */}
-      {error && <Code color="danger" className="text-wrap">{error}</Code>}
+      {error && (
+        <Code color="danger" className="text-wrap mb-4">
+          {error}
+        </Code>
+      )}
 
-      {/* Formulario */}
+      {/* Formulario de Creación de Devolución */}
       <div className="space-y-4 mt-4">
         {/* Selección de Cliente */}
         {loadingCustomers ? (
@@ -253,106 +235,58 @@ export default function CreateSalePage() {
             <Spinner size="lg" />
           </div>
         ) : (
-          <Select
-            aria-label="Cliente"
-            label="Cliente"
-            placeholder="Seleccione un cliente"
-            selectedKeys={customer ? [customer.toString()] : []}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0];
-              setCustomer(selected ? parseInt(selected, 10) : null);
-            }}
+          <Autocomplete
+            label="Seleccionar Cliente"
+            placeholder="Escribe para buscar y seleccionar un cliente"
+            className="w-full"
+            aria-label="Seleccionar Cliente"
+            onClear={() => setCustomer(null)}
+            onSelectionChange={(value) => setCustomer(value)}
             variant="underlined"
-            isRequired
+            clearable
           >
             {customers.map((cust) => (
-              <SelectItem key={cust.id.toString()} value={cust.id.toString()}>
+              <AutocompleteItem key={cust.id.toString()} value={cust.id.toString()}>
                 {cust.name}
-              </SelectItem>
+              </AutocompleteItem>
             ))}
-          </Select>
+          </Autocomplete>
         )}
 
-        {/* Tipo de Venta */}
-        <Select
-          aria-label="Tipo de Venta"
-          label="Tipo de Venta"
-          placeholder="Seleccione el tipo de venta"
-          selectedKeys={saleType ? [saleType.toString()] : []}
-          onSelectionChange={(keys) => {
-            const selected = Array.from(keys)[0];
-            setSaleType(selected ? selected.toString() : null);
-          }}
-          variant="underlined"
-          isRequired
-        >
-          {SALE_TYPE_CHOICES.map((type) => (
-            <SelectItem key={type.id} value={type.id}>
-              {type.name}
-            </SelectItem>
-          ))}
-        </Select>
-
-        {/* Fecha (Opcional) */}
+        {/* Selección de Fecha (Opcional) */}
         <Input
-          label="Fecha"
-          placeholder="Seleccione una fecha (Opcional)"
+          label="Fecha (Opcional)"
+          placeholder="Selecciona una fecha"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          onChange={(e) => {
+            const selectedDate = e.target.value ? new Date(e.target.value) : null;
+            setDate(selectedDate);
+          }}
           fullWidth
           variant="underlined"
           type="date"
-          aria-label="Fecha de la Venta"
+          aria-label="Fecha de Devolución"
         />
 
-        {/* Método de Pago (Opcional) */}
-        <Select
-          aria-label="Método de Pago"
-          label="Método de Pago"
-          placeholder="Seleccione un método de pago"
-          selectedKeys={paymentMethod ? [paymentMethod.toString()] : []}
-          onSelectionChange={(keys) => {
-            const selected = Array.from(keys)[0];
-            setPaymentMethod(selected || null);
-          }}
-          variant="underlined"
-        >
-          {PAYMENT_METHOD_CHOICES.map((method) => (
-            <SelectItem key={method.id} value={method.id}>
-              {method.name}
-            </SelectItem>
-          ))}
-        </Select>
-
-        {/* Necesita Envío */}
-        <Checkbox
-          checked={needsDelivery}
-          onChange={(e) => setNeedsDelivery(e.target.checked)}
-          label="Necesita Envío"
-          aria-label="Necesita Envío"
-        >
-          Necesita Envío
-        </Checkbox>
-
-        {/* Detalles de la Venta */}
-        <div>
+        {/* Detalles de la Devolución */}
+        <div className="space-y-4">
           <div className="flex justify-between items-center mb-2">
-            <p className="text-lg font-semibold">Detalles de la Venta</p>
+            <p className="text-lg font-semibold">Detalles de la Devolución</p>
             <Button
               variant="light"
               color="primary"
               size="sm"
-              onPress={handleAddSaleDetail}
+              onPress={addReturnDetail}
               isIconOnly
-              aria-label="Agregar Detalle de Venta"
+              aria-label="Agregar Detalle de Devolución"
             >
               <IconPlus className="h-4 w-4" />
             </Button>
           </div>
 
-          <div className="overflow-x-auto border rounded-md max-h-72 overflow-y-auto">
+          <div className="overflow-x-auto border rounded-md">
             <Table
-              aria-label="Detalles de la Venta"
+              aria-label="Detalles de la Devolución"
               className="border-none min-w-full"
               shadow="none"
               isCompact
@@ -366,18 +300,22 @@ export default function CreateSalePage() {
                 <TableColumn className="bg-white text-bold border-b-1">Acciones</TableColumn>
               </TableHeader>
               <TableBody>
-                {saleDetailsWithPrices.map((detail, index) => (
+                {returnDetailsWithPrices.map((detail, index) => (
                   <TableRow key={index}>
                     <TableCell>
                       {loadingProducts ? (
                         <Spinner size="sm" />
                       ) : (
                         <Autocomplete
-                          placeholder="Seleccione un producto"
-                          onSelectionChange={(value) => handleSaleDetailChange(index, "product", value)}
-                          variant="underlined"
-                          isRequired
+                          placeholder="Escribe para buscar y seleccionar un producto"
                           className="min-w-[200px]"
+                          aria-label={`Seleccionar Producto ${index + 1}`}
+                          onClear={() => handleDetailChange(index, "product", null)}
+                          onSelectionChange={(value) => 
+                            handleDetailChange(index, "product", value)
+                          }
+                          variant="underlined"
+                          isClearable
                         >
                           {products.map((prod) => (
                             <AutocompleteItem key={prod.id.toString()} value={prod.id.toString()}>
@@ -392,35 +330,43 @@ export default function CreateSalePage() {
                         aria-label={`Cantidad Detalle ${index + 1}`}
                         placeholder="Cantidad"
                         value={detail.quantity}
-                        onChange={(e) => handleSaleDetailChange(index, "quantity", e.target.value)}
+                        onChange={(e) =>
+                          handleDetailChange(index, "quantity", e.target.value)
+                        }
                         variant="underlined"
                         type="number"
-                        step="0.01"
-                        min="0"
+                        min="0.001"
+                        step="0.001"
                         isRequired
                         className="max-w-[100px]"
                       />
                     </TableCell>
                     <TableCell>
                       {detail.price
-                        ? `${detail.price.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`
-                        : '-'}
+                        ? `${detail.price.toLocaleString("es-AR", {
+                            style: "currency",
+                            currency: "ARS",
+                          })}`
+                        : "-"}
                     </TableCell>
                     <TableCell>
                       {detail.subtotal
-                        ? `${detail.subtotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`
-                        : '-'}
+                        ? `${detail.subtotal.toLocaleString("es-AR", {
+                            style: "currency",
+                            currency: "ARS",
+                          })}`
+                        : "-"}
                     </TableCell>
                     <TableCell>
-                      {saleDetails.length > 1 && (
+                      {returnDetails.length > 1 && (
                         <Tooltip content="Eliminar Detalle">
                           <Button
                             variant="light"
                             color="danger"
                             size="sm"
-                            onPress={() => handleRemoveSaleDetail(index)}
+                            onPress={() => removeReturnDetail(index)}
                             isIconOnly
-                            aria-label="Eliminar Detalle de Venta"
+                            aria-label="Eliminar Detalle de Devolución"
                           >
                             <IconTrash className="h-4 w-4" />
                           </Button>
@@ -432,25 +378,34 @@ export default function CreateSalePage() {
               </TableBody>
             </Table>
           </div>
-        </div>
 
-        {/* Total */}
-        <div className="flex justify-end mt-4">
-          <p className="text-xl font-semibold">
-            Total: {`${total.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`}
-          </p>
+          {/* Total */}
+          <div className="flex justify-end mt-4">
+            <p className="text-xl font-semibold">
+              Total: {`${total.toLocaleString("es-AR", {
+                style: "currency",
+                currency: "ARS",
+              })}`}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Botón de Crear Venta */}
+      {/* Botón para Crear Devolución */}
       <div className="mt-6">
         <Button
           className="rounded-md bg-black text-white"
-          onPress={handleCreateSale}
+          onPress={handleCreateReturn}
           isDisabled={loading || loadingCustomers || loadingProducts}
           fullWidth
         >
-          {loading ? <Spinner size="sm" /> : <><IconPlus className="h-4" /> Crear Venta</>}
+          {loading ? (
+            <Spinner size="sm" />
+          ) : (
+            <>
+              <IconPlus className="h-4 mr-2" /> Crear Devolución
+            </>
+          )}
         </Button>
       </div>
     </div>
