@@ -172,7 +172,7 @@ export default function BrandsPage() {
       name: brand.name,
       description: brand.description,
       actions: (
-        <div className="flex space-x-2">
+        <div className="flex gap-1">
           <Tooltip content="Editar">
             <Button
               variant="light"

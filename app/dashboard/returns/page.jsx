@@ -34,10 +34,12 @@ import {
   IconTrash,
   IconChevronUp,
   IconChevronDown,
+  IconEdit
 } from "@tabler/icons-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
+import { useRouter } from "next/navigation";
 
 export default function ReturnsPage() {
   const [returns, setReturns] = useState([]);
@@ -82,6 +84,8 @@ export default function ReturnsPage() {
     onOpen: onFilterModalOpen,
     onClose: onFilterModalClose,
   } = useDisclosure();
+
+  const router = useRouter();
 
   // Inicializar filtros temporales cuando se abre el modal
   useEffect(() => {
@@ -301,7 +305,7 @@ export default function ReturnsPage() {
           currency: "ARS",
         })}`,
         actions: (
-          <div className="flex space-x-2">
+          <div className="flex gap-1">
             <Tooltip content="Ver Detalles">
               <Button
                 variant="light"
@@ -312,6 +316,18 @@ export default function ReturnsPage() {
                 aria-label={`Ver detalles de la devolución ${returnItem.id}`}
               >
                 <IconChevronDown className="h-5" />
+              </Button>
+            </Tooltip>
+            <Tooltip content="Editar">
+              <Button
+                variant="light"
+                className="rounded-md"
+                isIconOnly
+                color="warning"
+                onPress={() => router.push(`/dashboard/returns/edit/${returnItem.id}`)}
+                aria-label={`Editar gasto ${returnItem.id}`}
+              >
+                <IconEdit className="h-5" />
               </Button>
             </Tooltip>
             <Tooltip content="Eliminar">
@@ -728,7 +744,7 @@ export default function ReturnsPage() {
                   >
                     <div className="overflow-x-auto max-h-60 border rounded-md">
                       {returnToView?.return_details &&
-                      returnToView.return_details.length > 0 ? (
+                        returnToView.return_details.length > 0 ? (
                         <Table
                           aria-label="Items de la Devolución"
                           className="border-none min-w-full"

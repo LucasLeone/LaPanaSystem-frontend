@@ -210,7 +210,7 @@ export default function CustomersPage() {
       address: customer.address,
       customer_type: capitalize(customer.customer_type) || 'N/A',
       actions: (
-        <div className="flex space-x-2">
+        <div className="flex gap-1">
           <Tooltip content="Editar">
             <Button
               variant="light"
@@ -310,7 +310,7 @@ export default function CustomersPage() {
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Clientes</p>
-        <div className="flex space-x-2">
+        <div className="flex gap-1">
           <Tooltip content="Exportar clientes">
             <Button variant="bordered" className="rounded-md border-1.5">
               <IconDownload className="h-4 mr-1" />

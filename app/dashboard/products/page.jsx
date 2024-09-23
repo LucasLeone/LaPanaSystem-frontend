@@ -274,7 +274,7 @@ export default function ProductsPage() {
       category: product.category_details?.name || '',
       brand: product.brand_details?.name || '',
       actions: (
-        <div className="flex space-x-2">
+        <div className="flex gap-1">
           <Tooltip content="Editar">
             <Button
               variant="light"

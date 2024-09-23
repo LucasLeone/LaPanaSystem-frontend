@@ -224,7 +224,7 @@ export default function EmployeesPage() {
       phone_number: employee.phone_number,
       user_type: USER_TYPE_LABELS[employee.user_type] || 'N/A', // Traducción aplicada aquí
       actions: (
-        <div className="flex space-x-2">
+        <div className="flex gap-1">
           <Tooltip content="Editar">
             <Button
               variant="light"
@@ -324,7 +324,7 @@ export default function EmployeesPage() {
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Empleados</p>
-        <div className="flex space-x-2">
+        <div className="flex gap-1">
           <Tooltip content="Exportar empleados">
             <Button variant="bordered" className="rounded-md border-1.5">
               <IconDownload className="h-4 mr-1" />

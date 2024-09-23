@@ -190,7 +190,7 @@ export default function SuppliersPage() {
       email: supplier.email,
       address: supplier.address,
       actions: (
-        <div className="flex space-x-2">
+        <div className="flex gap-1">
           <Tooltip content="Editar">
             <Button
               variant="light"

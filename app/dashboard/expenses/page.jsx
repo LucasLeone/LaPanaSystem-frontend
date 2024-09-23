@@ -298,7 +298,7 @@ export default function ExpensesPage() {
       category: expense.category_details?.name || '',
       supplier: expense.supplier_details?.name || '',
       actions: (
-        <div className="flex space-x-2">
+        <div className="flex gap-1">
           <Tooltip content="Editar">
             <Button
               variant="light"
