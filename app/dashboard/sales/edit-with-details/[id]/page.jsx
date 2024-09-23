@@ -312,7 +312,7 @@ export default function EditSalePage() {
             aria-label="Cliente"
             label="Cliente"
             placeholder="Seleccione un cliente"
-            selectedKeys={customer ? [customer.toString()] : []}
+            selectedKey={customer ? customer.toString() : ""}
             onSelectionChange={(keys) => {
               const selected = Array.from(keys)[0];
               setCustomer(selected ? parseInt(selected, 10) : null);
