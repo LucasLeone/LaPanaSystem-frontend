@@ -36,6 +36,7 @@ import {
   IconTrash,
   IconChevronUp,
   IconChevronDown,
+  IconEdit
 } from "@tabler/icons-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/app/axios";
@@ -273,6 +274,14 @@ export default function SalesPage() {
     return filtered;
   }, [sortedSales, filterState, filterSaleType, filterPaymentMethod, searchQuery]);
 
+  const handleEditClick = useCallback((sale) => {
+    if (sale.sale_details && Array.isArray(sale.sale_details) && sale.sale_details.length > 0) {
+      router.push(`/dashboard/sales/edit-with-details/${sale.id}`);
+    } else {
+      router.push(`/dashboard/sales/edit-without-details/${sale.id}`);
+    }
+  }, [router]);
+
   const rows = useMemo(() => (
     filteredSales.map(sale => ({
       id: sale.id,
@@ -288,7 +297,7 @@ export default function SalesPage() {
       payment_method: sale.payment_method.charAt(0).toUpperCase() + sale.payment_method.slice(1),
       state: STATE_CHOICES.find(item => item.id === sale.state)?.name || sale.state,
       actions: (
-        <div className="flex space-x-2">
+        <div className="flex gap-1">
           <Tooltip content="Ver Detalles">
             <Button
               variant="light"
@@ -299,6 +308,18 @@ export default function SalesPage() {
               aria-label={`Ver detalles de la venta ${sale.id}`}
             >
               <IconChevronDown className="h-5" />
+            </Button>
+          </Tooltip>
+          <Tooltip content="Editar">
+            <Button
+              variant="light"
+              className="rounded-md"
+              isIconOnly
+              color="warning"
+              onPress={() => handleEditClick(sale)}
+              aria-label={`Editar gasto ${sale}`}
+            >
+              <IconEdit className="h-5" />
             </Button>
           </Tooltip>
           <Tooltip content="Eliminar">
@@ -316,7 +337,7 @@ export default function SalesPage() {
         </div>
       )
     }))
-  ), [filteredSales, handleDeleteClick, handleViewClick]);
+  ), [filteredSales, handleDeleteClick, handleEditClick, handleViewClick]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
