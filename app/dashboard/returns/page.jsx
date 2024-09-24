@@ -50,6 +50,7 @@ export default function ReturnsPage() {
   const [error, setError] = useState(null);
 
   // Filtros reales que afectan la solicitud al backend
+  const [filterUser, setFilterUser] = useState(null);
   const [filterCustomer, setFilterCustomer] = useState(null);
   const [filterMinTotal, setFilterMinTotal] = useState("");
   const [filterMaxTotal, setFilterMaxTotal] = useState("");
@@ -57,6 +58,7 @@ export default function ReturnsPage() {
   const [filterDateRange, setFilterDateRange] = useState(null);
 
   // Filtros temporales usados en el modal
+  const [tempFilterUser, setTempFilterUser] = useState(null);
   const [tempFilterCustomer, setTempFilterCustomer] = useState(null);
   const [tempFilterMinTotal, setTempFilterMinTotal] = useState("");
   const [tempFilterMaxTotal, setTempFilterMaxTotal] = useState("");
@@ -72,6 +74,7 @@ export default function ReturnsPage() {
     direction: null,
   });
   const [customers, setCustomers] = useState([]);
+  const [users, setUsers] = useState([]);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
@@ -90,6 +93,7 @@ export default function ReturnsPage() {
   // Inicializar filtros temporales cuando se abre el modal
   useEffect(() => {
     if (isFilterModalOpen) {
+      setTempFilterUser(filterUser);
       setTempFilterCustomer(filterCustomer);
       setTempFilterMinTotal(filterMinTotal);
       setTempFilterMaxTotal(filterMaxTotal);
@@ -98,6 +102,7 @@ export default function ReturnsPage() {
     }
   }, [
     isFilterModalOpen,
+    filterUser,
     filterCustomer,
     filterMinTotal,
     filterMaxTotal,
@@ -114,6 +119,7 @@ export default function ReturnsPage() {
       try {
         const params = {
           // Removemos 'search' de los parámetros
+          user: filterUser || undefined,
           customer: filterCustomer || undefined,
           min_total: filterMinTotal || undefined,
           max_total: filterMaxTotal || undefined,
@@ -142,6 +148,7 @@ export default function ReturnsPage() {
     fetchReturns();
   }, [
     // Removemos 'searchQuery' de las dependencias
+    filterUser,
     filterCustomer,
     filterMinTotal,
     filterMaxTotal,
@@ -165,6 +172,24 @@ export default function ReturnsPage() {
       }
     };
     fetchCustomers();
+  }, []);
+
+  // Fetch Users for the Autocomplete
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const token = Cookies.get("access_token");
+      try {
+        const response = await api.get("/users/", {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        });
+        setUsers(response.data);
+      } catch (error) {
+        console.error("Error al cargar los usuarios:", error);
+      }
+    };
+    fetchUsers();
   }, []);
 
   const handleSearchChange = useCallback((e) => {
@@ -214,6 +239,7 @@ export default function ReturnsPage() {
   const columns = [
     { key: "id", label: "#", sortable: true },
     { key: "date", label: "Fecha", sortable: true },
+    { key: "user", label: "Usuario", sortable: true },
     { key: "customer", label: "Cliente", sortable: true },
     { key: "total", label: "Total", sortable: true },
     { key: "actions", label: "Acciones", sortable: false },
@@ -299,6 +325,7 @@ export default function ReturnsPage() {
           month: "short",
           day: "numeric",
         }),
+        user: returnItem.user_details?.first_name + " " + returnItem.user_details?.last_name || "",
         customer: returnItem.customer_details?.name || "",
         total: `${parseFloat(returnItem.total).toLocaleString("es-AR", {
           style: "currency",
@@ -345,7 +372,7 @@ export default function ReturnsPage() {
           </div>
         ),
       })),
-    [filteredReturns, handleDeleteClick, handleViewClick]
+    [filteredReturns, handleDeleteClick, handleViewClick, router]
   );
 
   const totalItems = rows.length;
@@ -412,6 +439,7 @@ export default function ReturnsPage() {
 
   // Función para aplicar filtros desde el modal
   const applyFilters = () => {
+    setFilterUser(tempFilterUser);
     setFilterCustomer(tempFilterCustomer);
     setFilterMinTotal(tempFilterMinTotal);
     setFilterMaxTotal(tempFilterMaxTotal);
@@ -423,6 +451,7 @@ export default function ReturnsPage() {
 
   // Función para limpiar filtros temporales en el modal
   const clearFilters = () => {
+    setTempFilterUser(null);
     setTempFilterCustomer(null);
     setTempFilterMinTotal("");
     setTempFilterMaxTotal("");
@@ -566,6 +595,30 @@ export default function ReturnsPage() {
               </ModalHeader>
               <ModalBody>
                 <div className="flex flex-col space-y-4">
+                  {/* Filtro de Usuario con Autocomplete */}
+                  <div>
+                    <Autocomplete
+                      label="Buscar y seleccionar usuario"
+                      placeholder="Escribe para buscar"
+                      className="w-full"
+                      aria-label="Filtro de Usuario"
+                      onClear={() => setTempFilterUser(null)}
+                      onSelectionChange={(value) => setTempFilterUser(value)}
+                      selectedKey={tempFilterUser}
+                      variant="underlined"
+                      isClearable
+                    >
+                      {users.map((user) => (
+                        <AutocompleteItem
+                          key={user.id.toString()}
+                          value={user.id.toString()}
+                        >
+                          {user.first_name + " " + user.last_name}
+                        </AutocompleteItem>
+                      ))}
+                    </Autocomplete>
+                  </div>
+
                   {/* Filtro de Cliente con Autocomplete */}
                   <div>
                     <Autocomplete
@@ -577,7 +630,7 @@ export default function ReturnsPage() {
                       onSelectionChange={(value) => setTempFilterCustomer(value)}
                       selectedKey={tempFilterCustomer}
                       variant="underlined"
-                      clearable
+                      isClearable
                     >
                       {customers.map((customer) => (
                         <AutocompleteItem
@@ -602,7 +655,7 @@ export default function ReturnsPage() {
                         className="w-full"
                         aria-label="Filtro de Total Mínimo"
                         variant="underlined"
-                        clearable
+                        isClearable
                       />
                     </div>
                     <div className="w-full">
@@ -615,7 +668,7 @@ export default function ReturnsPage() {
                         className="w-full"
                         aria-label="Filtro de Total Máximo"
                         variant="underlined"
-                        clearable
+                        isClearable
                       />
                     </div>
                   </div>
