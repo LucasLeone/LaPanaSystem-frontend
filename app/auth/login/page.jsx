@@ -42,7 +42,7 @@ export default function LoginPage() {
         setError("Ha ocurrido un error al iniciar sesión.");
       }
     } catch (error) {
-      setError(error.message);
+      setError("Credenciales invalidas.");
     }
   }
 
