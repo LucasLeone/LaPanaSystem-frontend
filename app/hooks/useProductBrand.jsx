@@ -2,26 +2,26 @@ import { useState, useEffect } from 'react';
 import api from '../axios';
 import Cookies from 'js-cookie';
 
-const useProductCategories = () => {
-  const [productCategories, setProductCategories] = useState([]);
+const useProductBrand = (productBrandId) => {
+  const [productBrand, setProductBrand] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchProductCategories = async () => {
+  const fetchProductBrand = async (id) => {
     setLoading(true);
     setError(null);
 
     const token = Cookies.get('access_token');
     try {
-      const response = await api.get('/product-categories/', {
+      const response = await api.get(`/product-brands/${id}`, {
         headers: {
           Authorization: `Token ${token}`,
         }
       });
-      setProductCategories(response.data);
+      setProductBrand(response.data);
     } catch (err) {
       console.error(err);
-      setError('Error al cargar las categorías.');
+      setError('Error al cargar la marca.');
     } finally {
       setLoading(false);
     }
@@ -29,10 +29,12 @@ const useProductCategories = () => {
 
 
   useEffect(() => {
-    fetchProductCategories();
-  }, []);
+    if (productBrandId) {
+        fetchProductBrand(productBrandId);
+    }
+  }, [productBrandId]);
 
-  return { productCategories, loading, error, fetchProductCategories };
+  return { productBrand, loading, error, fetchProductBrand };
 };
 
-export default useProductCategories;
+export default useProductBrand;

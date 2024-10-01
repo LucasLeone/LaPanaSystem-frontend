@@ -2,26 +2,26 @@ import { useState, useEffect } from 'react';
 import api from '../axios';
 import Cookies from 'js-cookie';
 
-const useProductCategories = () => {
-  const [productCategories, setProductCategories] = useState([]);
+const useUser = (userId) => {
+  const [user, setUser] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchProductCategories = async () => {
+  const fetchUser = async (id) => {
     setLoading(true);
     setError(null);
 
     const token = Cookies.get('access_token');
     try {
-      const response = await api.get('/product-categories/', {
+      const response = await api.get(`/users/${id}`, {
         headers: {
           Authorization: `Token ${token}`,
         }
       });
-      setProductCategories(response.data);
+      setUser(response.data);
     } catch (err) {
       console.error(err);
-      setError('Error al cargar las categorías.');
+      setError('Error al cargar el usuario.');
     } finally {
       setLoading(false);
     }
@@ -29,10 +29,12 @@ const useProductCategories = () => {
 
 
   useEffect(() => {
-    fetchProductCategories();
-  }, []);
+    if (userId) {
+        fetchUser(userId);
+    }
+  }, [userId]);
 
-  return { productCategories, loading, error, fetchProductCategories };
+  return { user, loading, error, fetchUser };
 };
 
-export default useProductCategories;
+export default useUser;
