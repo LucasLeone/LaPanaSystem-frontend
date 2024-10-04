@@ -210,7 +210,7 @@ export default function CreateSalePage() {
     } finally {
       setLoading(false);
     }
-  }, [customer, saleType, saleDetails, date, paymentMethod, router]);
+  }, [customer, saleType, needsDelivery, saleDetails, date, paymentMethod, router]);
 
   const handleAddSaleDetail = () => {
     setSaleDetails([...saleDetails, { product: null, quantity: "" }]);

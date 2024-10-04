@@ -180,6 +180,7 @@ export default function SalesPage() {
     { key: 'sale_type', label: 'Tipo de Venta', sortable: true },
     { key: 'payment_method', label: 'Método de Pago', sortable: true },
     { key: 'state', label: 'Estado', sortable: true },
+    { key: 'needs_delivery', label: 'Delivery', sortable: false },
     { key: 'actions', label: 'Acciones', sortable: false },
   ];
 
@@ -296,6 +297,7 @@ export default function SalesPage() {
       sale_type: sale.sale_type.charAt(0).toUpperCase() + sale.sale_type.slice(1),
       payment_method: sale.payment_method.charAt(0).toUpperCase() + sale.payment_method.slice(1),
       state: STATE_CHOICES.find(item => item.id === sale.state)?.name || sale.state,
+      needs_delivery: sale.needs_delivery ? 'Sí' : 'No',
       actions: (
         <div className="flex gap-1">
           <Tooltip content="Ver Detalles">
