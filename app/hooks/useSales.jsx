@@ -51,6 +51,10 @@ const useSales = (filters = {}) => {
       queryParams.append('max_total', filters.max_total);
     }
 
+    if (filters.customer) {
+      queryParams.append('customer', filters.customer);
+    }
+
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
 
     try {

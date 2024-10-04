@@ -36,6 +36,7 @@ import useSales from "@/app/hooks/useSales";
 import api from '@/app/axios';
 import Cookies from "js-cookie";
 import { capitalize } from "@/app/utils";
+import { parseDate } from '@internationalized/date';
 
 const STATE_CHOICES = {
   creada: "Creada",
@@ -47,7 +48,7 @@ const STATE_CHOICES = {
 
 export default function PendingDeliveriesPage() {
   const [filterCustomer, setFilterCustomer] = useState(null);
-  const [filterDate, setFilterDate] = useState(null);
+  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [page, setPage] = useState(1);
  
   const [saleToView, setSaleToView] = useState(null);
@@ -211,7 +212,6 @@ export default function PendingDeliveriesPage() {
   ), [currentItems, handleViewClick, handleMarkAsDelivered, handleMarkAsCollected]);
 
   const applyFilters = () => {
-    console.log(tempFilterCustomer);
     setFilterCustomer(tempFilterCustomer);
     setFilterDate(tempFilterDate);
     setPage(1);
@@ -363,8 +363,8 @@ export default function PendingDeliveriesPage() {
                   <div>
                     <DatePicker
                       label="Seleccionar Fecha"
-                      value={tempFilterDate ? tempFilterDate : undefined} // Manejo de valor nulo
-                      onChange={(date) => setTempFilterDate(date)}
+                      value={tempFilterDate ? parseDate(tempFilterDate) : undefined}
+                      onChange={(date) => setTempFilterDate(new Date(date).toISOString().split('T')[0])}
                       placeholder="Selecciona una fecha"
                       aria-label="Filtro de Fecha Específica"
                       variant="underlined"
