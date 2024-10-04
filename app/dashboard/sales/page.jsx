@@ -2,31 +2,31 @@
 
 import {
   Button,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
-  getKeyValue,
   Input,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-  Pagination,
   Spinner,
+  Link,
   Tooltip,
-  DropdownSection,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Pagination,
   Modal,
   ModalContent,
   ModalHeader,
   ModalBody,
   ModalFooter,
   useDisclosure,
-  Link,
+  Autocomplete,
+  AutocompleteItem,
+  DatePicker,
+  DateRangePicker,
   Accordion,
   AccordionItem,
+  Select,
+  SelectItem
 } from "@nextui-org/react";
 import {
   IconDownload,
@@ -43,8 +43,9 @@ import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { capitalize } from "@/app/utils";
+import useSales from "@/app/hooks/useSales";
 
-// Definir los estados, tipos de venta y métodos de pago estáticamente
+// Definir las opciones estáticas para filtros
 const STATE_CHOICES = [
   { id: "creada", name: "Creada" },
   { id: "pendiente_entrega", name: "Pendiente de Entrega" },
@@ -67,79 +68,131 @@ const PAYMENT_METHOD_CHOICES = [
 ];
 
 export default function SalesPage() {
-  const [sales, setSales] = useState([]);
+  const router = useRouter();
+
+  // Estados para los filtros temporales en el modal
+  const [tempFilterState, setTempFilterState] = useState(null);
+  const [tempFilterSaleType, setTempFilterSaleType] = useState(null);
+  const [tempFilterPaymentMethod, setTempFilterPaymentMethod] = useState(null);
+  const [tempFilterCustomer, setTempFilterCustomer] = useState(null);
+  const [tempFilterMinTotal, setTempFilterMinTotal] = useState("");
+  const [tempFilterMaxTotal, setTempFilterMaxTotal] = useState("");
+  const [tempFilterDate, setTempFilterDate] = useState(null);
+  const [tempFilterDateRange, setTempFilterDateRange] = useState(null);
+
+  // Estados para los filtros aplicados
+  const [filters, setFilters] = useState({});
+
+  const { sales, loading: salesLoading, error: salesError } = useSales(filters);
+
   const rowsPerPage = 10;
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState(null);
-  const [filterState, setFilterState] = useState(null);
-  const [filterSaleType, setFilterSaleType] = useState(null);
-  const [filterPaymentMethod, setFilterPaymentMethod] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState("");
+
   const [saleToDelete, setSaleToDelete] = useState(null);
   const [saleToView, setSaleToView] = useState(null);
-  const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
+  const [sortDescriptor, setSortDescriptor] = useState({
+    column: null,
+    direction: null,
+  });
 
-  const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
+  const { isOpen: isFilterModalOpen, onOpen: onFilterModalOpen, onClose: onFilterModalClose } = useDisclosure();
 
-  // Fetch Sales
+  // Fetch Customers for the Autocomplete in Filters Modal
+  const [customers, setCustomers] = useState([]);
   useEffect(() => {
-    const fetchSales = async () => {
-      setLoading(true);
-      setError(null);
+    const fetchCustomers = async () => {
       const token = Cookies.get("access_token");
       try {
-        const response = await api.get("/sales/", {
+        const response = await api.get("/customers/", {
           headers: {
             Authorization: `Token ${token}`,
           },
         });
-        setSales(response.data);
+        setCustomers(response.data);
       } catch (error) {
-        console.error(error);
-        setError("Error al cargar las ventas.");
-      } finally {
-        setLoading(false);
+        console.error("Error al cargar los clientes:", error);
       }
     };
-    fetchSales();
+    fetchCustomers();
   }, []);
 
-  const handleFilterState = useCallback((key) => {
-    if (key === "none-state") {
-      setFilterState(null);
-    } else {
-      setFilterState(key);
+  // Fetch Users for the Autocomplete in Filters Modal (si es necesario)
+  const [users, setUsers] = useState([]);
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const token = Cookies.get("access_token");
+      try {
+        const response = await api.get("/users/", {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        });
+        setUsers(response.data);
+      } catch (error) {
+        console.error("Error al cargar los usuarios:", error);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  // Aplicar filtros desde el modal
+  const applyFilters = () => {
+    const newFilters = {};
+
+    if (tempFilterState) {
+      newFilters.state = tempFilterState;
     }
-    setPage(1);
-  }, []);
-
-  const handleFilterSaleType = useCallback((key) => {
-    if (key === "none-saleType") {
-      setFilterSaleType(null);
-    } else {
-      setFilterSaleType(key);
+    if (tempFilterSaleType) {
+      newFilters.sale_type = tempFilterSaleType;
     }
-    setPage(1);
-  }, []);
-
-  const handleFilterPaymentMethod = useCallback((key) => {
-    if (key === "none-payment") {
-      setFilterPaymentMethod(null);
-    } else {
-      setFilterPaymentMethod(key);
+    if (tempFilterPaymentMethod) {
+      newFilters.payment_method = tempFilterPaymentMethod;
     }
-    setPage(1);
-  }, []);
+    if (tempFilterCustomer) {
+      newFilters.customer = tempFilterCustomer;
+    }
+    if (tempFilterMinTotal !== "") {
+      newFilters.min_total = tempFilterMinTotal;
+    }
+    if (tempFilterMaxTotal !== "") {
+      newFilters.max_total = tempFilterMaxTotal;
+    }
+    if (tempFilterDate) {
+      newFilters.date = tempFilterDate;
+    }
+    if (tempFilterDateRange) {
+      newFilters.start_date = tempFilterDateRange.start;
+      newFilters.end_date = tempFilterDateRange.end;
+    }
 
+    setFilters(newFilters);
+    setPage(1);
+    onFilterModalClose();
+  };
+
+  // Limpiar filtros temporales en el modal
+  const clearFilters = () => {
+    setTempFilterState(null);
+    setTempFilterSaleType(null);
+    setTempFilterPaymentMethod(null);
+    setTempFilterCustomer(null);
+    setTempFilterMinTotal("");
+    setTempFilterMaxTotal("");
+    setTempFilterDate(null);
+    setTempFilterDateRange(null);
+  };
+
+  // Manejar cambios en la búsqueda
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
     setPage(1);
   }, []);
 
+  // Manejar eliminación de una venta
   const handleDeleteClick = useCallback((sale) => {
     setSaleToDelete(sale);
     onOpen();
@@ -148,7 +201,6 @@ export default function SalesPage() {
   const handleDeleteSale = useCallback(async () => {
     if (!saleToDelete) return;
 
-    setDeleting(true);
     const token = Cookies.get("access_token");
     try {
       await api.delete(`/sales/${saleToDelete.id}/`, {
@@ -156,21 +208,22 @@ export default function SalesPage() {
           Authorization: `Token ${token}`,
         },
       });
-      setSales((prevSales) => prevSales.filter(s => s.id !== saleToDelete.id));
+      // Refrescar los datos llamando a fetchSales si está disponible
+      // Si usas el hook, normalmente se re-fetch automáticamente al cambiar los filtros
       onClose();
     } catch (error) {
       console.error("Error al eliminar la venta:", error);
-      setError("Error al eliminar la venta.");
-    } finally {
-      setDeleting(false);
+      // Puedes manejar el error aquí
     }
   }, [saleToDelete, onClose]);
 
+  // Manejar ver detalles de una venta
   const handleViewClick = useCallback((sale) => {
     setSaleToView(sale);
     onViewOpen();
   }, [onViewOpen]);
 
+  // Definir las columnas de la tabla
   const columns = [
     { key: 'id', label: '#', sortable: true },
     { key: 'date', label: 'Fecha', sortable: true },
@@ -184,6 +237,7 @@ export default function SalesPage() {
     { key: 'actions', label: 'Acciones', sortable: false },
   ];
 
+  // Ordenar las ventas
   const sortedSales = useMemo(() => {
     if (!sortDescriptor.column) return [...sales];
     try {
@@ -246,56 +300,36 @@ export default function SalesPage() {
     }
   }, [sales, sortDescriptor]);
 
+  // Filtrar las ventas por la búsqueda
   const filteredSales = useMemo(() => {
-    let filtered = [...sortedSales];
+    if (!searchQuery) return sortedSales;
+    const lowerSearch = searchQuery.toLowerCase();
+    return sortedSales.filter(
+      (s) =>
+        s.customer_details?.name.toLowerCase().includes(lowerSearch) ||
+        String(s.id).includes(lowerSearch) ||
+        s.user_details?.username.toLowerCase().includes(lowerSearch) ||
+        s.payment_method.toLowerCase().includes(lowerSearch)
+    );
+  }, [sortedSales, searchQuery]);
 
-    if (filterState) {
-      filtered = filtered.filter(sale => sale.state === filterState);
-    }
-
-    if (filterSaleType) {
-      filtered = filtered.filter(sale => sale.sale_type === filterSaleType);
-    }
-
-    if (filterPaymentMethod) {
-      filtered = filtered.filter(sale => sale.payment_method === filterPaymentMethod);
-    }
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(sale =>
-        sale.id.toString().includes(query) ||
-        (sale.customer_details?.name && sale.customer_details.name.toLowerCase().includes(query)) ||
-        (sale.user_details?.username && sale.user_details.username.toLowerCase().includes(query)) ||
-        (sale.payment_method && sale.payment_method.toLowerCase().includes(query))
-      );
-    }
-
-
-    return filtered;
-  }, [sortedSales, filterState, filterSaleType, filterPaymentMethod, searchQuery]);
-
-  const handleEditClick = useCallback((sale) => {
-    if (sale.sale_details && Array.isArray(sale.sale_details) && sale.sale_details.length > 0) {
-      router.push(`/dashboard/sales/edit-with-details/${sale.id}`);
-    } else {
-      router.push(`/dashboard/sales/edit-without-details/${sale.id}`);
-    }
-  }, [router]);
-
+  // Crear las filas para la tabla
   const rows = useMemo(() => (
     filteredSales.map(sale => ({
       id: sale.id,
-      date: new Date(sale.date).toLocaleDateString('es-AR', {
+      date: new Date(sale.date).toLocaleString('es-AR', {
         year: 'numeric',
-        month: 'short',
+        month: 'numeric',
         day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
       }),
       customer: sale.customer_details?.name || '',
       seller: sale.user_details?.username || '',
       total: `${parseFloat(sale.total).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`,
-      sale_type: sale.sale_type.charAt(0).toUpperCase() + sale.sale_type.slice(1),
-      payment_method: sale.payment_method.charAt(0).toUpperCase() + sale.payment_method.slice(1),
+      sale_type: capitalize(sale.sale_type),
+      payment_method: capitalize(sale.payment_method),
       state: STATE_CHOICES.find(item => item.id === sale.state)?.name || sale.state,
       needs_delivery: sale.needs_delivery ? 'Sí' : 'No',
       actions: (
@@ -319,7 +353,7 @@ export default function SalesPage() {
               isIconOnly
               color="warning"
               onPress={() => handleEditClick(sale)}
-              aria-label={`Editar gasto ${sale}`}
+              aria-label={`Editar venta ${sale.id}`}
             >
               <IconEdit className="h-5" />
             </Button>
@@ -339,7 +373,7 @@ export default function SalesPage() {
         </div>
       )
     }))
-  ), [filteredSales, handleDeleteClick, handleEditClick, handleViewClick]);
+  ), [filteredSales, handleDeleteClick, handleViewClick]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
@@ -390,18 +424,28 @@ export default function SalesPage() {
         aria-sort={isSorted ? direction : "none"}
       >
         <span>{column.label}</span>
-        {isSortable && (
-          direction === "ascending" ? <IconChevronUp className="ml-1 h-4 w-4" /> :
-            direction === "descending" ? <IconChevronDown className="ml-1 h-4 w-4" /> :
-              null
-        )}
+        {isSortable &&
+          (direction === "ascending" ? (
+            <IconChevronUp className="ml-1 h-4 w-4" />
+          ) : direction === "descending" ? (
+            <IconChevronDown className="ml-1 h-4 w-4" />
+          ) : null)}
       </div>
     );
   }, [sortDescriptor, handleSortChange]);
 
+  // Manejar edición de una venta
+  const handleEditClick = useCallback((sale) => {
+    if (sale.sale_details && Array.isArray(sale.sale_details) && sale.sale_details.length > 0) {
+      router.push(`/dashboard/sales/edit-with-details/${sale.id}`);
+    } else {
+      router.push(`/dashboard/sales/edit-without-details/${sale.id}`);
+    }
+  }, [router]);
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Ventas</p>
         <div className="flex flex-wrap gap-2">
@@ -430,6 +474,7 @@ export default function SalesPage() {
         </div>
       </div>
 
+      {/* Búsqueda */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
         <Input
           placeholder="Buscar ventas"
@@ -446,101 +491,28 @@ export default function SalesPage() {
           aria-label="Buscar ventas"
           isClearable={true}
         />
-        <div className="flex flex-wrap gap-4">
-          {/* Filtro de Estado */}
-          <Dropdown>
-            <DropdownTrigger>
-              <Button
-                variant="bordered"
-                className={`rounded-md border-1.5 ${filterState ? 'bg-gray-200' : ''}`}
-                aria-label="Filtros de Estado"
-              >
-                <IconFilter className="h-4 mr-1" />
-                {filterState
-                  ? `${STATE_CHOICES.find(item => item.id === filterState)?.name || "Estado"}`
-                  : "Estado"}
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Filtros de Estado" onAction={handleFilterState}>
-              <DropdownSection className="max-h-60 overflow-y-auto">
-                {STATE_CHOICES.map(item => (
-                  <DropdownItem key={item.id} value={item.id}>
-                    {item.name}
-                  </DropdownItem>
-                ))}
-              </DropdownSection>
-              <DropdownItem key="none-state" value="none" className="border-t-1 rounded-t-none">
-                Quitar Filtro de Estado
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-
-          {/* Filtro de Tipo de Venta */}
-          <Dropdown>
-            <DropdownTrigger>
-              <Button
-                variant="bordered"
-                className={`rounded-md border-1.5 ${filterSaleType ? 'bg-gray-200' : ''}`}
-                aria-label="Filtros de Tipo de Venta"
-              >
-                <IconFilter className="h-4 mr-1" />
-                {filterSaleType
-                  ? `${SALE_TYPE_CHOICES.find(item => item.id === filterSaleType)?.name || "Tipo"}`
-                  : "Tipo de Venta"}
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Filtros de Tipo de Venta" onAction={handleFilterSaleType}>
-              <DropdownSection className="max-h-60 overflow-y-auto">
-                {SALE_TYPE_CHOICES.map(item => (
-                  <DropdownItem key={item.id} value={item.id}>
-                    {item.name}
-                  </DropdownItem>
-                ))}
-              </DropdownSection>
-              <DropdownItem key="none-saleType" value="none" className="border-t-1 rounded-t-none">
-                Quitar Filtro de Tipo de Venta
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-
-          {/* Filtro de Método de Pago */}
-          <Dropdown>
-            <DropdownTrigger>
-              <Button
-                variant="bordered"
-                className={`rounded-md border-1.5 ${filterPaymentMethod ? 'bg-gray-200' : ''}`}
-                aria-label="Filtros de Método de Pago"
-              >
-                <IconFilter className="h-4 mr-1" />
-                {filterPaymentMethod
-                  ? `${PAYMENT_METHOD_CHOICES.find(item => item.id === filterPaymentMethod)?.name || "Método"}`
-                  : "Método de Pago"}
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Filtros de Método de Pago" onAction={handleFilterPaymentMethod}>
-              <DropdownSection className="max-h-60 overflow-y-auto">
-                {PAYMENT_METHOD_CHOICES.map(item => (
-                  <DropdownItem key={item.id} value={item.id}>
-                    {item.name}
-                  </DropdownItem>
-                ))}
-              </DropdownSection>
-              <DropdownItem key="none-payment" value="none" className="border-t-1 rounded-t-none">
-                Quitar Filtro de Método de Pago
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-        </div>
+        <Tooltip content="Aplicar Filtros">
+          <Button
+            variant="bordered"
+            className="rounded-md border-1.5"
+            onPress={onFilterModalOpen}
+            aria-label="Abrir Modal de Filtros"
+          >
+            <IconFilter className="h-4 mr-1" />
+            Filtros
+          </Button>
+        </Tooltip>
       </div>
 
+      {/* Tabla de Ventas */}
       <div className="overflow-x-auto border rounded-md">
-        {loading ? (
+        {salesLoading ? (
           <div className="flex justify-center items-center p-6">
             <Spinner size="lg" />
           </div>
-        ) : error ? (
+        ) : salesError ? (
           <div className="text-red-500 text-center p-6">
-            {error}
+            {salesError}
           </div>
         ) : currentItemsCount === 0 ? (
           <div className="text-center p-6">
@@ -565,38 +537,31 @@ export default function SalesPage() {
                 </TableColumn>
               )}
             </TableHeader>
-            <TableBody items={currentItems}>
-              {(item) => (
+            <TableBody>
+              {currentItems.map((item) => (
                 <TableRow key={item.id}>
-                  {(columnKey) => {
-                    if (columnKey === 'id') {
-                      return (
-                        <TableCell>
-                          {item.id}
-                        </TableCell>
-                      );
+                  {columns.map((column) => {
+                    if (column.key === "id") {
+                      return <TableCell key={column.key}>{item.id}</TableCell>;
                     }
-                    if (columnKey === 'actions') {
-                      return (
-                        <TableCell>
-                          {item.actions}
-                        </TableCell>
-                      );
+                    if (column.key === "actions") {
+                      return <TableCell key={column.key}>{item.actions}</TableCell>;
                     }
                     return (
-                      <TableCell className="min-w-[80px] sm:min-w-[100px]">
-                        {getKeyValue(item, columnKey)}
+                      <TableCell key={column.key} className="min-w-[80px] sm:min-w-[100px]">
+                        {item[column.key]}
                       </TableCell>
                     );
-                  }}
+                  })}
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
         )}
       </div>
 
-      {!loading && !error && currentItemsCount !== 0 && (
+      {/* Paginación */}
+      {!salesLoading && !salesError && currentItemsCount !== 0 && (
         <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
             Mostrando {currentItemsCount} de {totalItems} ventas
@@ -612,6 +577,196 @@ export default function SalesPage() {
           />
         </div>
       )}
+
+      {/* Modal de Filtros */}
+      <Modal
+        isOpen={isFilterModalOpen}
+        onOpenChange={onFilterModalClose}
+        aria-labelledby="modal-filters-title"
+        placement="center"
+        size="lg"
+      >
+        <ModalContent>
+          {() => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                Filtros de Ventas
+              </ModalHeader>
+              <ModalBody>
+                <div className="flex flex-col space-y-4">
+                  {/* Filtro de Estado */}
+                  <div>
+                    <Select
+                      label="Buscar y seleccionar estado"
+                      placeholder="Selecciona un estado"
+                      className="w-full"
+                      aria-label="Filtro de Estado"
+                      onClear={() => setTempFilterState(null)}
+                      onSelectionChange={(value) => setTempFilterState(value)}
+                      selectedKey={tempFilterState}
+                      variant="underlined"
+                      isClearable
+                    >
+                      {STATE_CHOICES.map((state) => (
+                        <SelectItem
+                          key={state.id.toString()}
+                          value={state.id.toString()}
+                        >
+                          {state.name}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+
+                  {/* Filtro de Tipo de Venta */}
+                  <div>
+                    <Select
+                      label="Buscar y seleccionar tipo de venta"
+                      placeholder="Selecciona un tipo de venta"
+                      className="w-full"
+                      aria-label="Filtro de Tipo de Venta"
+                      onClear={() => setTempFilterSaleType(null)}
+                      onSelectionChange={(value) => setTempFilterSaleType(value)}
+                      selectedKey={tempFilterSaleType}
+                      variant="underlined"
+                      isClearable
+                    >
+                      {SALE_TYPE_CHOICES.map((type) => (
+                        <SelectItem
+                          key={type.id.toString()}
+                          value={type.id.toString()}
+                        >
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+
+                  {/* Filtro de Método de Pago */}
+                  <div>
+                    <Select
+                      label="Buscar y seleccionar método de pago"
+                      placeholder="Selecciona un método de pago"
+                      className="w-full"
+                      aria-label="Filtro de Método de Pago"
+                      onClear={() => setTempFilterPaymentMethod(null)}
+                      onSelectionChange={(value) => setTempFilterPaymentMethod(value)}
+                      selectedKey={tempFilterPaymentMethod}
+                      variant="underlined"
+                      isClearable
+                    >
+                      {PAYMENT_METHOD_CHOICES.map((method) => (
+                        <SelectItem
+                          key={method.id.toString()}
+                          value={method.id.toString()}
+                        >
+                          {method.name}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+
+                  {/* Filtro de Cliente */}
+                  <div>
+                    <Autocomplete
+                      label="Buscar y seleccionar cliente"
+                      placeholder="Selecciona un cliente"
+                      className="w-full"
+                      aria-label="Filtro de Cliente"
+                      onClear={() => setTempFilterCustomer(null)}
+                      onSelectionChange={(value) => setTempFilterCustomer(value)}
+                      selectedKey={tempFilterCustomer}
+                      variant="underlined"
+                      isClearable
+                    >
+                      {customers.map((customer) => (
+                        <AutocompleteItem
+                          key={customer.id.toString()}
+                          value={customer.id.toString()}
+                        >
+                          {customer.name}
+                        </AutocompleteItem>
+                      ))}
+                    </Autocomplete>
+                  </div>
+
+                  {/* Filtro de Total Mínimo y Máximo */}
+                  <div className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0">
+                    <div className="w-full">
+                      <Input
+                        label="Total Mínimo"
+                        placeholder="Total Mínimo"
+                        type="number"
+                        value={tempFilterMinTotal}
+                        onChange={(e) => setTempFilterMinTotal(e.target.value)}
+                        className="w-full"
+                        aria-label="Filtro de Total Mínimo"
+                        variant="underlined"
+                        isClearable
+                        startContent={
+                          <div className="pointer-events-none flex items-center">
+                            <span className="text-default-400 text-small">$</span>
+                          </div>
+                        }
+                      />
+                    </div>
+                    <div className="w-full">
+                      <Input
+                        label="Total Máximo"
+                        placeholder="Total Máximo"
+                        type="number"
+                        value={tempFilterMaxTotal}
+                        onChange={(e) => setTempFilterMaxTotal(e.target.value)}
+                        className="w-full"
+                        aria-label="Filtro de Total Máximo"
+                        variant="underlined"
+                        isClearable
+                        startContent={
+                          <div className="pointer-events-none flex items-center">
+                            <span className="text-default-400 text-small">$</span>
+                          </div>
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* Filtro de Fecha Específica */}
+                  <div>
+                    <DatePicker
+                      label="Seleccionar Fecha"
+                      value={tempFilterDate}
+                      onChange={setTempFilterDate}
+                      placeholder="Selecciona una fecha"
+                      aria-label="Filtro de Fecha Específica"
+                      variant="underlined"
+                    />
+                  </div>
+
+                  {/* Filtro de Rango de Fechas */}
+                  <div>
+                    <DateRangePicker
+                      label="Seleccionar Rango de Fechas"
+                      value={tempFilterDateRange}
+                      onChange={setTempFilterDateRange}
+                      placeholder="Selecciona un rango de fechas"
+                      aria-label="Filtro de Rango de Fechas"
+                      variant="underlined"
+                    />
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" onPress={clearFilters} color="warning">
+                  Limpiar Filtros
+                </Button>
+                <Button onPress={applyFilters} color="primary">
+                  Aplicar Filtros
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
 
       {/* Modal de Confirmación de Eliminación */}
       <Modal isOpen={isOpen} onOpenChange={onClose} aria-labelledby="modal-title" placement="top-center">
@@ -630,16 +785,16 @@ export default function SalesPage() {
                   color="danger"
                   variant="light"
                   onPress={onClose}
-                  disabled={deleting}
+                  disabled={false} // Puedes manejar el estado de deshabilitado si es necesario
                 >
                   Cancelar
                 </Button>
                 <Button
                   color="primary"
                   onPress={handleDeleteSale}
-                  disabled={deleting}
+                  disabled={false} // Puedes manejar el estado de deshabilitado si es necesario
                 >
-                  {deleting ? <Spinner size="sm" /> : "Eliminar"}
+                  Eliminar
                 </Button>
               </ModalFooter>
             </>
@@ -647,7 +802,7 @@ export default function SalesPage() {
         </ModalContent>
       </Modal>
 
-      {/* Nuevo Modal para Ver Detalles */}
+      {/* Modal para Ver Detalles */}
       <Modal size="2xl" isOpen={isViewOpen} onOpenChange={onViewClose} aria-labelledby="view-modal-title" placement="center">
         <ModalContent>
           {() => (
@@ -696,7 +851,6 @@ export default function SalesPage() {
                       )}
                     </div>
                   </AccordionItem>
-                  {/* Puedes agregar más AccordionItems si necesitas más secciones */}
                 </Accordion>
               </ModalBody>
               <ModalFooter>
