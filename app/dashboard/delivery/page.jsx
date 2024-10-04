@@ -27,9 +27,10 @@ import {
 import {
   IconChevronDown,
   IconCheck,
-  IconCash,
+  // IconCash,
   IconDownload,
-  IconFilter
+  IconFilter,
+  IconTruck
 } from "@tabler/icons-react";
 import useCustomers from "@/app/hooks/useCustomers";
 import useSales from "@/app/hooks/useSales";
@@ -50,7 +51,7 @@ export default function PendingDeliveriesPage() {
   const [filterCustomer, setFilterCustomer] = useState(null);
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [page, setPage] = useState(1);
- 
+
   const [saleToView, setSaleToView] = useState(null);
   const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
 
@@ -128,9 +129,18 @@ export default function PendingDeliveriesPage() {
     }
   }, [salesFilters, fetchSales]);
 
-  const handleMarkAsCollected = useCallback(async (sale) => {
+  const handleMarkAsDeliveredAndCollected = useCallback(async (sale) => {
     const token = Cookies.get('access_token');
     try {
+      await api.post(
+        `/sales/${sale.id}/mark-as-delivered/`,
+        null,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
       await api.post(
         `/sales/${sale.id}/mark-as-charged/`,
         null,
@@ -142,7 +152,7 @@ export default function PendingDeliveriesPage() {
       );
       fetchSales(salesFilters);
     } catch (err) {
-      console.error(`Error al marcar como cobrado la venta ${sale.id}:`, err);
+      console.error(`Error al marcar como entregado y cobrado la venta ${sale.id}:`, err);
     }
   }, [salesFilters, fetchSales]);
 
@@ -190,26 +200,26 @@ export default function PendingDeliveriesPage() {
               aria-label={`Marcar como entregado la venta ${sale.id}`}
               isDisabled={sale.state !== 'pendiente_entrega'}
             >
-              <IconCheck className="h-5" />
+              <IconTruck className="h-5" />
             </Button>
           </Tooltip>
-          <Tooltip content="Marcar como Cobrado">
+          <Tooltip content="Marcar como Entregada y Cobrada">
             <Button
               variant="light"
               className="rounded-md"
               isIconOnly
               color="secondary"
-              onPress={() => handleMarkAsCollected(sale)}
-              aria-label={`Marcar como cobrado la venta ${sale.id}`}
-              isDisabled={sale.state !== 'entregada'}
+              onPress={() => handleMarkAsDeliveredAndCollected(sale)}
+              aria-label={`Marcar como entregada y cobrada la venta ${sale.id}`}
+              isDisabled={sale.state === 'entregada' || sale.state === 'cobrada'}
             >
-              <IconCash className="h-5" />
+              <IconCheck className="h-5" />
             </Button>
           </Tooltip>
         </div>
       )
     }))
-  ), [currentItems, handleViewClick, handleMarkAsDelivered, handleMarkAsCollected]);
+  ), [currentItems, handleViewClick, handleMarkAsDelivered, handleMarkAsDeliveredAndCollected]);
 
   const applyFilters = () => {
     setFilterCustomer(tempFilterCustomer);
