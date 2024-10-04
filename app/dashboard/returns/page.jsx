@@ -74,7 +74,7 @@ export default function ReturnsPage() {
     direction: null,
   });
 
-  const { returns, loading: returnsLoading, error: returnsError } = useReturns(
+  const { returns, loading: returnsLoading, error: returnsError, fetchReturns } = useReturns(
     filterUser,
     filterCustomer,
     filterMinTotal,
@@ -142,9 +142,7 @@ export default function ReturnsPage() {
           Authorization: `Token ${token}`,
         },
       });
-      setReturns((prevReturns) =>
-        prevReturns.filter((r) => r.id !== returnToDelete.id)
-      );
+      fetchReturns();
       onClose();
     } catch (error) {
       console.error("Error al eliminar la devolución:", error);

@@ -17,84 +17,41 @@ import {
   AutocompleteItem,
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft, IconTrash } from "@tabler/icons-react";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+import useCustomers from "@/app/hooks/useCustomers";
+import useProducts from "@/app/hooks/useProducts";
 
 export default function CreateReturnPage() {
   const [loading, setLoading] = useState(false);
-  const [loadingCustomers, setLoadingCustomers] = useState(true);
-  const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState(null);
 
-  const [customer, setCustomer] = useState(null); // ID del cliente
+  const [customer, setCustomer] = useState(null);
   const [date, setDate] = useState(getTodayDate());
 
   const [returnDetails, setReturnDetails] = useState([
     { product: null, quantity: "" },
   ]);
 
-  const [customers, setCustomers] = useState([]);
-  const [products, setProducts] = useState([]);
+  const { customers, loading: customersLoading, error: customersError } = useCustomers();
+  const { products, loading: productsLoading, error: productsError } = useProducts();
 
   const router = useRouter();
 
-  // Función para obtener la fecha de hoy en formato YYYY-MM-DD
   function getTodayDate() {
     const today = new Date();
     const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0"); // Los meses en JS van de 0 a 11
+    const month = String(today.getMonth() + 1).padStart(2, "0");
     const day = String(today.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
 
-  // Validación de Cantidad (acepta decimales)
   const isValidQuantity = (quantity) => {
     return /^\d+(\.\d{1,2})?$/.test(quantity) && parseFloat(quantity) > 0;
   };
 
-  // Fetch de Clientes y Productos
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/customers/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCustomers(response.data);
-      } catch (error) {
-        console.error("Error al cargar los clientes:", error);
-        setError("Error al cargar los clientes.");
-      } finally {
-        setLoadingCustomers(false);
-      }
-    };
-
-    const fetchProducts = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/products/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setProducts(response.data);
-      } catch (error) {
-        console.error("Error al cargar los productos:", error);
-        setError("Error al cargar los productos.");
-      } finally {
-        setLoadingProducts(false);
-      }
-    };
-
-    fetchCustomers();
-    fetchProducts();
-  }, []);
-
-  // Validación de Campos
   const isValidReturn = () => {
     if (!customer) {
       setError("Por favor, selecciona un cliente.");
@@ -118,25 +75,21 @@ export default function CreateReturnPage() {
     return true;
   };
 
-  // Manejar Cambios en los Detalles de Devolución
   const handleDetailChange = (index, field, value) => {
     const newDetails = [...returnDetails];
     newDetails[index][field] = value;
     setReturnDetails(newDetails);
   };
 
-  // Agregar un Nuevo Detalle de Devolución
   const addReturnDetail = () => {
     setReturnDetails([...returnDetails, { product: null, quantity: "" }]);
   };
 
-  // Eliminar un Detalle de Devolución
   const removeReturnDetail = (index) => {
     const newDetails = returnDetails.filter((_, i) => i !== index);
     setReturnDetails(newDetails);
   };
 
-  // Calcular precios y subtotales sin actualizar el estado
   const returnDetailsWithPrices = useMemo(() => {
     return returnDetails.map((detail) => {
       if (!detail.product || !isValidQuantity(detail.quantity)) {
@@ -147,7 +100,6 @@ export default function CreateReturnPage() {
         return { ...detail, price: 0, subtotal: 0 };
       }
 
-      // Puedes agregar lógica adicional para calcular el precio si es necesario
       const price = parseFloat(product.wholesale_price) || 0;
       const quantity = parseFloat(detail.quantity);
       const subtotal = price * quantity;
@@ -155,13 +107,11 @@ export default function CreateReturnPage() {
     });
   }, [returnDetails, products]);
 
-  // Calcular total
   const total = returnDetailsWithPrices.reduce(
     (acc, detail) => acc + detail.subtotal,
     0
   );
 
-  // Manejar Creación de Devolución
   const handleCreateReturn = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -171,10 +121,8 @@ export default function CreateReturnPage() {
       return;
     }
 
-    // Preparar Datos para Enviar
     const returnData = {
       customer: customer,
-      // Solo incluir la fecha si está seleccionada
       ...(date ? { date: new Date(date).toISOString().split("T")[0] } : {}),
       return_details: returnDetails.map((detail) => ({
         product: parseInt(detail.product, 10),
@@ -190,12 +138,10 @@ export default function CreateReturnPage() {
         },
       });
 
-      // Redireccionar tras la creación exitosa
       router.push("/dashboard/returns");
     } catch (error) {
       console.error("Error al crear la devolución:", error);
       if (error.response && error.response.data) {
-        // Mostrar errores específicos de la API
         const apiErrors = Object.values(error.response.data).flat();
         setError(apiErrors.join(" "));
       } else {
@@ -204,11 +150,10 @@ export default function CreateReturnPage() {
     } finally {
       setLoading(false);
     }
-  }, [customer, date, returnDetails, router]);
+  }, [customer, date, isValidReturn, returnDetails, router]);
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-      {/* Header */}
       <div className="flex items-center mb-4 gap-1">
         <Link href="/dashboard/returns">
           <Tooltip content="Volver" placement="bottom">
@@ -220,17 +165,14 @@ export default function CreateReturnPage() {
         <p className="text-2xl font-bold">Crear nueva Devolución</p>
       </div>
 
-      {/* Mostrar Errores */}
       {error && (
         <Code color="danger" className="text-wrap mb-4">
           {error}
         </Code>
       )}
 
-      {/* Formulario de Creación de Devolución */}
       <div className="space-y-4 mt-4">
-        {/* Selección de Cliente */}
-        {loadingCustomers ? (
+        {customersLoading ? (
           <div className="flex justify-center items-center">
             <Spinner size="lg" />
           </div>
@@ -253,7 +195,6 @@ export default function CreateReturnPage() {
           </Autocomplete>
         )}
 
-        {/* Selección de Fecha (Opcional) */}
         <Input
           label="Fecha (Opcional)"
           placeholder="Selecciona una fecha"
@@ -268,7 +209,6 @@ export default function CreateReturnPage() {
           aria-label="Fecha de Devolución"
         />
 
-        {/* Detalles de la Devolución */}
         <div className="space-y-4">
           <div className="flex justify-between items-center mb-2">
             <p className="text-lg font-semibold">Detalles de la Devolución</p>
@@ -303,7 +243,7 @@ export default function CreateReturnPage() {
                 {returnDetailsWithPrices.map((detail, index) => (
                   <TableRow key={index}>
                     <TableCell>
-                      {loadingProducts ? (
+                      {productsLoading ? (
                         <Spinner size="sm" />
                       ) : (
                         <Autocomplete
@@ -379,7 +319,6 @@ export default function CreateReturnPage() {
             </Table>
           </div>
 
-          {/* Total */}
           <div className="flex justify-end mt-4">
             <p className="text-xl font-semibold">
               Total: {`${total.toLocaleString("es-AR", {
@@ -391,12 +330,11 @@ export default function CreateReturnPage() {
         </div>
       </div>
 
-      {/* Botón para Crear Devolución */}
       <div className="mt-6">
         <Button
           className="rounded-md bg-black text-white"
           onPress={handleCreateReturn}
-          isDisabled={loading || loadingCustomers || loadingProducts}
+          isDisabled={loading || customersLoading || productsLoading}
           fullWidth
         >
           {loading ? (
