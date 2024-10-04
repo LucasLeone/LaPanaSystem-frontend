@@ -13,10 +13,11 @@ import {
   SelectItem,
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft } from "@tabler/icons-react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+import useCustomers from "@/app/hooks/useCustomers";
 
 const PAYMENT_METHOD_CHOICES = [
   { id: "efectivo", name: "Efectivo" },
@@ -27,6 +28,8 @@ const PAYMENT_METHOD_CHOICES = [
 ];
 
 export default function CreateSalePage() {
+  const { customers, loading: customersLoading, error: customersError } = useCustomers();
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -34,49 +37,25 @@ export default function CreateSalePage() {
   const [date, setDate] = useState(getTodayDate());
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [total, setTotal] = useState("");
-
-  const [customers, setCustomers] = useState([]);
-
+  
   const router = useRouter();
 
   function getTodayDate() {
     const today = new Date();
     const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0'); // Los meses en JavaScript van de 0 a 11
+    const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
 
-  // Funciones de Validación
   const isValidTotal = (total) => {
     return /^\d+(\.\d{1,2})?$/.test(total) && parseFloat(total) > 0;
   };
-
-  // Fetch de Usuarios y Clientes
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/customers/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCustomers(response.data);
-      } catch (error) {
-        console.error("Error al cargar los clientes:", error);
-        setError("Error al cargar los clientes.");
-      }
-    };
-
-    fetchCustomers();
-  }, []);
 
   const handleCreateSale = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    // Validaciones
     if (!customer || !total) {
       setError("Por favor, completa todos los campos requeridos.");
       setLoading(false);
@@ -89,7 +68,6 @@ export default function CreateSalePage() {
       return;
     }
 
-    // Preparar Datos para Enviar
     const saleData = {
       customer: customer,
       total: parseFloat(total),
@@ -111,12 +89,10 @@ export default function CreateSalePage() {
         },
       });
 
-      // Redireccionar tras la creación exitosa
       router.push("/dashboard/sales");
     } catch (error) {
       console.error("Error al crear la venta:", error);
       if (error.response && error.response.data) {
-        // Mostrar errores específicos de la API
         const apiErrors = Object.values(error.response.data).flat();
         setError(apiErrors.join(" "));
       } else {
@@ -142,7 +118,6 @@ export default function CreateSalePage() {
       {error && <Code color="danger" className="text-wrap">{error}</Code>}
 
       <div className="space-y-4 mt-4">
-        {/* Selección de Cliente */}
         <Autocomplete
           aria-label="Cliente"
           label="Cliente"
@@ -158,7 +133,6 @@ export default function CreateSalePage() {
           ))}
         </Autocomplete>
 
-        {/* Fecha (Opcional) */}
         <Input
           label="Fecha"
           placeholder="Seleccione una fecha (Opcional)"
@@ -170,7 +144,6 @@ export default function CreateSalePage() {
           aria-label="Fecha de la Venta"
         />
 
-        {/* Método de Pago (Opcional) */}
         <Select
           aria-label="Método de Pago"
           label="Método de Pago"
@@ -189,7 +162,6 @@ export default function CreateSalePage() {
           ))}
         </Select>
 
-        {/* Total */}
         <Input
           label="Total"
           placeholder="Ingrese el total de la venta (Ej: 4900.53)"

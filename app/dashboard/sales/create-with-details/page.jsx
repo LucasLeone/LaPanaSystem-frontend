@@ -20,10 +20,12 @@ import {
   AutocompleteItem
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft, IconTrash } from "@tabler/icons-react";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+import useCustomers from "@/app/hooks/useCustomers";
+import useProducts from "@/app/hooks/useProducts";
 
 const PAYMENT_METHOD_CHOICES = [
   { id: "efectivo", name: "Efectivo" },
@@ -40,18 +42,16 @@ const SALE_TYPE_CHOICES = [
 
 export default function CreateSalePage() {
   const [loading, setLoading] = useState(false);
-  const [loadingCustomers, setLoadingCustomers] = useState(true);
-  const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState(null);
 
-  const [customer, setCustomer] = useState(null); // ID del cliente
+  const [customer, setCustomer] = useState(null);
   const [saleType, setSaleType] = useState("minorista");
   const [date, setDate] = useState(getTodayDate());
   const [paymentMethod, setPaymentMethod] = useState("efectivo");
   const [needsDelivery, setNeedsDelivery] = useState(false);
 
-  const [customers, setCustomers] = useState([]);
-  const [products, setProducts] = useState([]);
+  const { customers, loading: customersLoading, error: customersError } = useCustomers();
+  const { products, loading: productsLoading, error: productsError } = useProducts();
 
   const [saleDetails, setSaleDetails] = useState([
     { product: null, quantity: "" },
@@ -62,7 +62,7 @@ export default function CreateSalePage() {
   function getTodayDate() {
     const today = new Date();
     const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0"); // Los meses en JS van de 0 a 11
+    const month = String(today.getMonth() + 1).padStart(2, "0");
     const day = String(today.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
@@ -71,47 +71,6 @@ export default function CreateSalePage() {
     return /^\d+(\.\d{1,2})?$/.test(quantity) && parseFloat(quantity) > 0;
   };
 
-  // Fetch de Clientes y Productos
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/customers/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCustomers(response.data);
-      } catch (error) {
-        console.error("Error al cargar los clientes:", error);
-        setError("Error al cargar los clientes.");
-      } finally {
-        setLoadingCustomers(false);
-      }
-    };
-
-    const fetchProducts = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/products/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setProducts(response.data);
-      } catch (error) {
-        console.error("Error al cargar los productos:", error);
-        setError("Error al cargar los productos.");
-      } finally {
-        setLoadingProducts(false);
-      }
-    };
-
-    fetchCustomers();
-    fetchProducts();
-  }, []);
-
-  // Calcular precios y subtotales sin actualizar el estado
   const saleDetailsWithPrices = useMemo(() => {
     return saleDetails.map((detail) => {
       if (!detail.product || !isValidQuantity(detail.quantity)) {
@@ -122,7 +81,6 @@ export default function CreateSalePage() {
         return { ...detail, price: 0, subtotal: 0 };
       }
 
-      // Lógica para determinar el precio
       let price = 0;
       if (saleType === "mayorista") {
         if (product.wholesale_price && parseFloat(product.wholesale_price) > 0) {
@@ -140,21 +98,18 @@ export default function CreateSalePage() {
     });
   }, [saleType, saleDetails, products]);
 
-  // Calcular total
   const total = saleDetailsWithPrices.reduce((acc, detail) => acc + detail.subtotal, 0);
 
   const handleCreateSale = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    // Validaciones
     if (!customer || !saleType) {
       setError("Por favor, completa todos los campos requeridos.");
       setLoading(false);
       return;
     }
 
-    // Validar sale_details
     for (let i = 0; i < saleDetails.length; i++) {
       const detail = saleDetails[i];
       if (!detail.product || !detail.quantity) {
@@ -169,7 +124,6 @@ export default function CreateSalePage() {
       }
     }
 
-    // Preparar Datos para Enviar
     const saleData = {
       customer: customer,
       sale_type: saleType,
@@ -196,12 +150,10 @@ export default function CreateSalePage() {
         },
       });
 
-      // Redireccionar tras la creación exitosa
       router.push("/dashboard/sales");
     } catch (error) {
       console.error("Error al crear la venta:", error);
       if (error.response && error.response.data) {
-        // Mostrar errores específicos de la API
         const apiErrors = Object.values(error.response.data).flat();
         setError(apiErrors.join(" "));
       } else {
@@ -230,7 +182,6 @@ export default function CreateSalePage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-      {/* Título y Botón de Volver */}
       <div className="flex items-center mb-4 gap-1">
         <Link href="/dashboard/sales">
           <Tooltip content="Volver" placement="bottom">
@@ -242,13 +193,10 @@ export default function CreateSalePage() {
         <p className="text-2xl font-bold">Crear nueva Venta</p>
       </div>
 
-      {/* Mostrar Errores */}
       {error && <Code color="danger" className="text-wrap">{error}</Code>}
 
-      {/* Formulario */}
       <div className="space-y-4 mt-4">
-        {/* Selección de Cliente */}
-        {loadingCustomers ? (
+        {customersLoading ? (
           <div className="flex justify-center items-center">
             <Spinner size="lg" />
           </div>
@@ -273,7 +221,6 @@ export default function CreateSalePage() {
           </Select>
         )}
 
-        {/* Tipo de Venta */}
         <Select
           aria-label="Tipo de Venta"
           label="Tipo de Venta"
@@ -293,7 +240,6 @@ export default function CreateSalePage() {
           ))}
         </Select>
 
-        {/* Fecha (Opcional) */}
         <Input
           label="Fecha"
           placeholder="Seleccione una fecha (Opcional)"
@@ -305,7 +251,6 @@ export default function CreateSalePage() {
           aria-label="Fecha de la Venta"
         />
 
-        {/* Método de Pago (Opcional) */}
         <Select
           aria-label="Método de Pago"
           label="Método de Pago"
@@ -324,7 +269,6 @@ export default function CreateSalePage() {
           ))}
         </Select>
 
-        {/* Necesita Envío */}
         <Checkbox
           checked={needsDelivery}
           onChange={(e) => setNeedsDelivery(e.target.checked)}
@@ -334,7 +278,6 @@ export default function CreateSalePage() {
           Necesita Envío
         </Checkbox>
 
-        {/* Detalles de la Venta */}
         <div>
           <div className="flex justify-between items-center mb-2">
             <p className="text-lg font-semibold">Detalles de la Venta</p>
@@ -369,7 +312,7 @@ export default function CreateSalePage() {
                 {saleDetailsWithPrices.map((detail, index) => (
                   <TableRow key={index}>
                     <TableCell>
-                      {loadingProducts ? (
+                      {productsLoading ? (
                         <Spinner size="sm" />
                       ) : (
                         <Autocomplete
@@ -434,7 +377,6 @@ export default function CreateSalePage() {
           </div>
         </div>
 
-        {/* Total */}
         <div className="flex justify-end mt-4">
           <p className="text-xl font-semibold">
             Total: {`${total.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`}
@@ -442,12 +384,11 @@ export default function CreateSalePage() {
         </div>
       </div>
 
-      {/* Botón de Crear Venta */}
       <div className="mt-6">
         <Button
           className="rounded-md bg-black text-white"
           onPress={handleCreateSale}
-          isDisabled={loading || loadingCustomers || loadingProducts}
+          isDisabled={loading || customersLoading || productsLoading}
           fullWidth
         >
           {loading ? <Spinner size="sm" /> : <><IconPlus className="h-4" /> Crear Venta</>}

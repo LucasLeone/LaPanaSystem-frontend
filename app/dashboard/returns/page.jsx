@@ -40,16 +40,17 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+import useReturns from "@/app/hooks/useReturns";
+import useCustomers from "@/app/hooks/useCustomers";
+import useUsers from "@/app/hooks/useUsers";
 
 export default function ReturnsPage() {
-  const [returns, setReturns] = useState([]);
   const rowsPerPage = 10;
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
 
-  // Filtros reales que afectan la solicitud al backend
   const [filterUser, setFilterUser] = useState(null);
   const [filterCustomer, setFilterCustomer] = useState(null);
   const [filterMinTotal, setFilterMinTotal] = useState("");
@@ -57,7 +58,6 @@ export default function ReturnsPage() {
   const [filterDate, setFilterDate] = useState(null);
   const [filterDateRange, setFilterDateRange] = useState(null);
 
-  // Filtros temporales usados en el modal
   const [tempFilterUser, setTempFilterUser] = useState(null);
   const [tempFilterCustomer, setTempFilterCustomer] = useState(null);
   const [tempFilterMinTotal, setTempFilterMinTotal] = useState("");
@@ -73,8 +73,17 @@ export default function ReturnsPage() {
     column: null,
     direction: null,
   });
-  const [customers, setCustomers] = useState([]);
-  const [users, setUsers] = useState([]);
+
+  const { returns, loading: returnsLoading, error: returnsError } = useReturns(
+    filterUser,
+    filterCustomer,
+    filterMinTotal,
+    filterMaxTotal,
+    filterDate,
+    filterDateRange,
+  );
+  const { customers, loading: customersLoading, error: customersError } = useCustomers();
+  const { users, loading: usersLoading, error: usersError } = useUsers();
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
@@ -90,7 +99,6 @@ export default function ReturnsPage() {
 
   const router = useRouter();
 
-  // Inicializar filtros temporales cuando se abre el modal
   useEffect(() => {
     if (isFilterModalOpen) {
       setTempFilterUser(filterUser);
@@ -109,88 +117,6 @@ export default function ReturnsPage() {
     filterDate,
     filterDateRange,
   ]);
-
-  // Fetch Returns (sin incluir searchQuery)
-  useEffect(() => {
-    const fetchReturns = async () => {
-      setLoading(true);
-      setError(null);
-      const token = Cookies.get("access_token");
-      try {
-        const params = {
-          // Removemos 'search' de los parámetros
-          user: filterUser || undefined,
-          customer: filterCustomer || undefined,
-          min_total: filterMinTotal || undefined,
-          max_total: filterMaxTotal || undefined,
-          date: filterDate ? new Date(filterDate).toISOString().split("T")[0] : undefined,
-          start_date: filterDateRange
-            ? new Date(filterDateRange.start).toISOString().split("T")[0]
-            : undefined,
-          end_date: filterDateRange
-            ? new Date(filterDateRange.end).toISOString().split("T")[0]
-            : undefined,
-        };
-        const response = await api.get("/returns/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-          params,
-        });
-        setReturns(response.data);
-      } catch (error) {
-        console.error(error);
-        setError("Error al cargar las devoluciones.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchReturns();
-  }, [
-    // Removemos 'searchQuery' de las dependencias
-    filterUser,
-    filterCustomer,
-    filterMinTotal,
-    filterMaxTotal,
-    filterDate,
-    filterDateRange,
-  ]);
-
-  // Fetch Customers for the Autocomplete
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/customers/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCustomers(response.data);
-      } catch (error) {
-        console.error("Error al cargar los clientes:", error);
-      }
-    };
-    fetchCustomers();
-  }, []);
-
-  // Fetch Users for the Autocomplete
-  useEffect(() => {
-    const fetchUsers = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/users/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setUsers(response.data);
-      } catch (error) {
-        console.error("Error al cargar los usuarios:", error);
-      }
-    };
-    fetchUsers();
-  }, []);
 
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);

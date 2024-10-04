@@ -23,6 +23,9 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter, useParams } from "next/navigation";
+import useProducts from "@/app/hooks/useProducts";
+import useCustomers from "@/app/hooks/useCustomers";
+import useSale from "@/app/hooks/useSale";
 
 const PAYMENT_METHOD_CHOICES = [
   { id: "efectivo", name: "Efectivo" },
@@ -38,31 +41,30 @@ const SALE_TYPE_CHOICES = [
 ];
 
 export default function EditSalePage() {
+  const router = useRouter();
+  const params = useParams();
+  const saleId = params.id;
+
+  const { products, loading: productsLoading, error: productsError } = useProducts();
+  const { customers, loading: customersLoading, error: customersError } = useCustomers();
+  const { sale, loading: saleLoading, error: saleError } = useSale(saleId);
+
   const [loading, setLoading] = useState(false);
-  const [loadingCustomers, setLoadingCustomers] = useState(true);
-  const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState(null);
 
-  const [customer, setCustomer] = useState(null); // ID del cliente
+  const [customer, setCustomer] = useState(null);
   const [saleType, setSaleType] = useState("minorista");
   const [date, setDate] = useState(getTodayDate());
   const [paymentMethod, setPaymentMethod] = useState("efectivo");
-
-  const [customers, setCustomers] = useState([]);
-  const [products, setProducts] = useState([]);
 
   const [saleDetails, setSaleDetails] = useState([
     { product: null, quantity: "" },
   ]);
 
-  const router = useRouter();
-  const params = useParams(); // Obtenemos los parámetros de la ruta
-  const saleId = params.id; // Asumimos que la ruta tiene el parámetro 'id'
-
   function getTodayDate() {
     const today = new Date();
     const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0"); // Los meses en JS van de 0 a 11
+    const month = String(today.getMonth() + 1).padStart(2, "0");
     const day = String(today.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
@@ -71,80 +73,21 @@ export default function EditSalePage() {
     return /^\d+(\.\d{1,3})?$/.test(quantity) && parseFloat(quantity) > 0;
   };
 
-  // Fetch de Clientes y Productos
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/customers/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCustomers(response.data);
-      } catch (error) {
-        console.error("Error al cargar los clientes:", error);
-        setError("Error al cargar los clientes.");
-      } finally {
-        setLoadingCustomers(false);
-      }
-    };
-
-    const fetchProducts = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/products/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setProducts(response.data);
-      } catch (error) {
-        console.error("Error al cargar los productos:", error);
-        setError("Error al cargar los productos.");
-      } finally {
-        setLoadingProducts(false);
-      }
-    };
-
-    const fetchSale = async () => {
-      setLoading(true);
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get(`/sales/${saleId}/`, {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        const sale = response.data;
-        setCustomer(sale.customer_details.id);
-        setSaleType(sale.sale_type);
-        setDate(sale.date ? sale.date.split('T')[0] : getTodayDate()); // Asegurarse de que la fecha esté en formato YYYY-MM-DD
-        setPaymentMethod(sale.payment_method || "efectivo");
-        if (sale.sale_details && sale.sale_details.length > 0) {
-          setSaleDetails(sale.sale_details.map(detail => ({
-            product: detail.product_details.id.toString(),
-            quantity: detail.quantity.toString(),
-          })));
-        } else {
-          setSaleDetails([{ product: null, quantity: "" }]);
-        }
-      } catch (error) {
-        console.error("Error al cargar la venta:", error);
-        setError("Error al cargar la venta.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCustomers();
-    fetchProducts();
-    if (saleId) {
-      fetchSale();
+    setCustomer(sale.customer_details?.id);
+    setSaleType(sale.sale_type);
+    setDate(sale.date ? sale.date.split('T')[0] : getTodayDate());
+    setPaymentMethod(sale.payment_method || "efectivo");
+    if (sale.sale_details && sale.sale_details.length > 0) {
+      setSaleDetails(sale.sale_details.map(detail => ({
+        product: detail.product_details.id.toString(),
+        quantity: detail.quantity.toString(),
+      })));
+    } else {
+      setSaleDetails([{ product: null, quantity: "" }]);
     }
-  }, [saleId]);
+  }, [sale]);
 
-  // Calcular precios y subtotales sin actualizar el estado
   const saleDetailsWithPrices = useMemo(() => {
     return saleDetails.map((detail, index) => {
       if (!detail.product || !isValidQuantity(detail.quantity)) {
@@ -155,7 +98,6 @@ export default function EditSalePage() {
         return { ...detail, price: 0, subtotal: 0 };
       }
 
-      // Lógica para determinar el precio
       let price = 0;
       if (saleType === "mayorista") {
         if (product.wholesale_price && parseFloat(product.wholesale_price) > 0) {
@@ -181,7 +123,6 @@ export default function EditSalePage() {
     });
   }, [saleType, saleDetails, products]);
 
-  // Calcular total
   const total = useMemo(() => {
     return saleDetailsWithPrices.reduce((acc, detail) => acc + detail.subtotal, 0);
   }, [saleDetailsWithPrices]);
@@ -190,14 +131,12 @@ export default function EditSalePage() {
     setLoading(true);
     setError(null);
 
-    // Validaciones
     if (!customer || !saleType) {
       setError("Por favor, completa todos los campos requeridos.");
       setLoading(false);
       return;
     }
 
-    // Validar sale_details
     for (let i = 0; i < saleDetails.length; i++) {
       const detail = saleDetails[i];
       if (!detail.product || !detail.quantity) {
@@ -212,7 +151,6 @@ export default function EditSalePage() {
       }
     }
 
-    // Preparar Datos para Enviar
     const saleData = {
       customer: customer,
       sale_type: saleType,
@@ -232,18 +170,16 @@ export default function EditSalePage() {
 
     const token = Cookies.get("access_token");
     try {
-      await api.put(`/sales/${saleId}/`, saleData, { // Usamos PUT para actualizar
+      await api.put(`/sales/${saleId}/`, saleData, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
 
-      // Redireccionar tras la actualización exitosa
       router.push("/dashboard/sales");
     } catch (error) {
       console.error("Error al actualizar la venta:", error);
       if (error.response && error.response.data) {
-        // Mostrar errores específicos de la API
         const apiErrors = Object.values(error.response.data).flat();
         setError(apiErrors.join(" "));
       } else {
@@ -270,8 +206,7 @@ export default function EditSalePage() {
     setSaleDetails(newSaleDetails);
   };
 
-  if (loading && !loadingCustomers && !loadingProducts) {
-    // Mostrar un spinner mientras se cargan los datos de la venta
+  if (loading && !customersLoading && !productsLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Spinner size="lg" />
@@ -281,7 +216,6 @@ export default function EditSalePage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-      {/* Título y Botón de Volver */}
       <div className="flex items-center mb-4 gap-1">
         <Link href="/dashboard/sales">
           <Tooltip content="Volver" placement="bottom">
@@ -293,13 +227,10 @@ export default function EditSalePage() {
         <p className="text-2xl font-bold">Editar Venta #{saleId}</p>
       </div>
 
-      {/* Mostrar Errores */}
       {error && <Code color="danger" className="text-wrap">{error}</Code>}
 
-      {/* Formulario */}
       <div className="space-y-4 mt-4">
-        {/* Selección de Cliente */}
-        {loadingCustomers ? (
+        {customersLoading ? (
           <div className="flex justify-center items-center">
             <Spinner size="lg" />
           </div>
@@ -324,7 +255,6 @@ export default function EditSalePage() {
           </Autocomplete>
         )}
 
-        {/* Tipo de Venta */}
         <Select
           aria-label="Tipo de Venta"
           label="Tipo de Venta"
@@ -344,7 +274,6 @@ export default function EditSalePage() {
           ))}
         </Select>
 
-        {/* Fecha (Opcional) */}
         <Input
           label="Fecha"
           placeholder="Seleccione una fecha (Opcional)"
@@ -356,7 +285,6 @@ export default function EditSalePage() {
           aria-label="Fecha de la Venta"
         />
 
-        {/* Método de Pago (Opcional) */}
         <Select
           aria-label="Método de Pago"
           label="Método de Pago"
@@ -375,7 +303,6 @@ export default function EditSalePage() {
           ))}
         </Select>
 
-        {/* Detalles de la Venta */}
         <div>
           <div className="flex justify-between items-center mb-2">
             <p className="text-lg font-semibold">Detalles de la Venta</p>
@@ -410,7 +337,7 @@ export default function EditSalePage() {
                 {saleDetailsWithPrices.map((detail, index) => (
                   <TableRow key={index}>
                     <TableCell>
-                      {loadingProducts ? (
+                      {productsLoading ? (
                         <Spinner size="sm" />
                       ) : (
                         <Autocomplete
@@ -477,7 +404,6 @@ export default function EditSalePage() {
           </div>
         </div>
 
-        {/* Total */}
         <div className="flex justify-end mt-4">
           <p className="text-xl font-semibold">
             Total: {`${total.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`}
@@ -485,12 +411,11 @@ export default function EditSalePage() {
         </div>
       </div>
 
-      {/* Botón de Actualizar Venta */}
       <div className="mt-6">
         <Button
           className="rounded-md bg-black text-white"
           onPress={handleUpdateSale}
-          isDisabled={loading || loadingCustomers || loadingProducts}
+          isDisabled={loading || customersLoading || productsLoading}
           fullWidth
         >
           {loading ? <Spinner size="sm" /> : <><IconPlus className="h-4" /> Actualizar Venta</>}

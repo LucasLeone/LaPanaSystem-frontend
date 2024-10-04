@@ -13,10 +13,12 @@ import {
   SelectItem,
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft } from "@tabler/icons-react";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter, useParams } from "next/navigation";
+import useCustomers from "@/app/hooks/useCustomers";
+import useSale from "@/app/hooks/useSale";
 
 const PAYMENT_METHOD_CHOICES = [
   { id: "efectivo", name: "Efectivo" },
@@ -27,93 +29,46 @@ const PAYMENT_METHOD_CHOICES = [
 ];
 
 export default function EditSaleWithoutDetailsPage() {
+  const router = useRouter();
+  const params = useParams();
+  const saleId = params.id;
+  
+  const { customers, loading: customersLoading, error: customersError } = useCustomers();
+  const { sale, loading: saleLoading, error: saleError } = useSale(saleId);
+  
   const [loading, setLoading] = useState(false);
-  const [loadingCustomers, setLoadingCustomers] = useState(true);
-  const [loadingSale, setLoadingSale] = useState(true);
   const [error, setError] = useState(null);
 
-  const [customer, setCustomer] = useState(null); // ID del cliente
+  const [customer, setCustomer] = useState(null);
   const [date, setDate] = useState(getTodayDate());
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [total, setTotal] = useState("");
 
-  const [customers, setCustomers] = useState([]);
-
-  const router = useRouter();
-  const params = useParams(); // Obtener los parámetros de la ruta
-  const saleId = params.id; // Asumimos que la ruta tiene el parámetro 'id'
-
   function getTodayDate() {
     const today = new Date();
     const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0"); // Los meses en JS van de 0 a 11
+    const month = String(today.getMonth() + 1).padStart(2, "0");
     const day = String(today.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
 
-  // Funciones de Validación
+  useEffect(() => {
+    if (sale) {
+      setCustomer(sale.customer_details?.id);
+      setDate(sale.date ? sale.date.split("T")[0] : getTodayDate());
+      setPaymentMethod(sale.payment_method || null);
+      setTotal(sale.total);
+    }
+  }, [sale]);
+
   const isValidTotal = (total) => {
     return /^\d+(\.\d{1,2})?$/.test(total) && parseFloat(total) > 0;
   };
-
-  // Fetch de Clientes
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/customers/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCustomers(response.data);
-      } catch (error) {
-        console.error("Error al cargar los clientes:", error);
-        setError("Error al cargar los clientes.");
-      } finally {
-        setLoadingCustomers(false);
-      }
-    };
-
-    fetchCustomers();
-  }, []);
-
-  // Fetch de la Venta a Editar
-  useEffect(() => {
-    const fetchSale = async () => {
-      if (!saleId) return;
-      setLoadingSale(true);
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get(`/sales/${saleId}/`, {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        const sale = response.data;
-        setCustomer(sale.customer_details.id);
-        setDate(sale.date ? sale.date.split("T")[0] : getTodayDate()); // Formato YYYY-MM-DD
-        setPaymentMethod(sale.payment_method || null);
-        setTotal(sale.total ? sale.total.toString() : "");
-      } catch (error) {
-        console.error("Error al cargar la venta:", error);
-        setError("Error al cargar la venta.");
-      } finally {
-        setLoadingSale(false);
-      }
-    };
-
-    fetchSale();
-  }, [saleId]);
-
-  // Calcular el total automáticamente si es necesario
-  // En este caso, el total es un campo manual, así que no se calcula automáticamente
 
   const handleUpdateSale = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    // Validaciones
     if (!customer || !total) {
       setError("Por favor, completa todos los campos requeridos.");
       setLoading(false);
@@ -126,7 +81,6 @@ export default function EditSaleWithoutDetailsPage() {
       return;
     }
 
-    // Preparar Datos para Enviar
     const saleData = {
       customer: parseInt(customer),
       total: parseFloat(total),
@@ -148,12 +102,10 @@ export default function EditSaleWithoutDetailsPage() {
         },
       });
 
-      // Redireccionar tras la actualización exitosa
       router.push("/dashboard/sales");
     } catch (error) {
       console.error("Error al actualizar la venta:", error);
       if (error.response && error.response.data) {
-        // Mostrar errores específicos de la API
         const apiErrors = Object.values(error.response.data).flat();
         setError(apiErrors.join(" "));
       } else {
@@ -166,7 +118,6 @@ export default function EditSaleWithoutDetailsPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-      {/* Título y Botón de Volver */}
       <div className="flex items-center mb-4 gap-1">
         <Link href="/dashboard/sales">
           <Tooltip content="Volver" placement="bottom">
@@ -178,24 +129,20 @@ export default function EditSaleWithoutDetailsPage() {
         <p className="text-2xl font-bold">Editar Venta #{saleId}</p>
       </div>
 
-      {/* Mostrar Errores */}
       {error && (
         <Code color="danger" className="text-wrap">
           {error}
         </Code>
       )}
 
-      {/* Mostrar Spinner si está cargando la venta */}
-      {(loadingCustomers || loadingSale) && (
+      {(customersLoading || saleLoading) && (
         <div className="flex justify-center items-center my-6">
           <Spinner size="lg" />
         </div>
       )}
 
-      {/* Formulario */}
-      {!loadingSale && !loadingCustomers && (
+      {!saleLoading && !customersLoading && (
         <div className="space-y-4 mt-4">
-          {/* Selección de Cliente */}
           <Autocomplete
             aria-label="Cliente"
             label="Cliente"
@@ -213,7 +160,6 @@ export default function EditSaleWithoutDetailsPage() {
             ))}
           </Autocomplete>
 
-          {/* Fecha (Opcional) */}
           <Input
             label="Fecha"
             placeholder="Seleccione una fecha (Opcional)"
@@ -225,7 +171,6 @@ export default function EditSaleWithoutDetailsPage() {
             aria-label="Fecha de la Venta"
           />
 
-          {/* Método de Pago (Opcional) */}
           <Select
             aria-label="Método de Pago"
             label="Método de Pago"
@@ -244,7 +189,6 @@ export default function EditSaleWithoutDetailsPage() {
             ))}
           </Select>
 
-          {/* Total */}
           <Input
             label="Total"
             placeholder="Ingrese el total de la venta (Ej: 4900.53)"
@@ -266,8 +210,7 @@ export default function EditSaleWithoutDetailsPage() {
         </div>
       )}
 
-      {/* Botón de Actualizar Venta */}
-      {!loadingSale && !loadingCustomers && (
+      {!saleLoading && !customersLoading && (
         <div className="mt-6">
           <Button
             className="rounded-md bg-black text-white"
