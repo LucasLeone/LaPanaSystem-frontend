@@ -2,18 +2,18 @@ import { useState, useEffect } from 'react';
 import api from '../axios';
 import Cookies from 'js-cookie';
 
-const useUser = (userId) => {
-  const [user, setUser] = useState([]);
+const useUser = (username) => {
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchUser = async (id) => {
+  const fetchUser = async (username) => {
     setLoading(true);
     setError(null);
 
     const token = Cookies.get('access_token');
     try {
-      const response = await api.get(`/users/${id}`, {
+      const response = await api.get(`/users/${username}/`, {
         headers: {
           Authorization: `Token ${token}`,
         }
@@ -27,12 +27,11 @@ const useUser = (userId) => {
     }
   };
 
-
   useEffect(() => {
-    if (userId) {
-        fetchUser(userId);
+    if (username) {
+      fetchUser(username);
     }
-  }, [userId]);
+  }, [username]);
 
   return { user, loading, error, fetchUser };
 };

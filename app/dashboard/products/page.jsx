@@ -36,51 +36,39 @@ import {
   IconChevronUp,
   IconChevronDown,
 } from "@tabler/icons-react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+import useProducts from "@/app/hooks/useProducts";
+import useProductBrands from "@/app/hooks/useProductBrands";
+import useProductCategories from "@/app/hooks/useProductCategories";
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [brands, setBrands] = useState([]);
+  const { products, loading: loadingProducts, error: errorProducts, fetchProducts } = useProducts();
+  const { productBrands: brands, loading: loadingBrands, error: errorBrands, fetchBrands } = useProductBrands();
+  const { categories, loading: loadingCategories, error: errorCategories, fetchCategories } = useProductCategories();
+
   const rowsPerPage = 10;
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
+
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
+
   const [filterCategory, setFilterCategory] = useState(null);
   const [filterBrand, setFilterBrand] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+
   const [productToDelete, setProductToDelete] = useState(null);
+
   const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
+
   const [user, setUser] = useState(null);
 
   const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      setError(null);
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/products/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setProducts(response.data);
-      } catch (error) {
-        console.error(error);
-        setError("Error al cargar los productos.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProducts();
-
     const userData = Cookies.get("user");
     if (userData) {
       try {
@@ -90,40 +78,6 @@ export default function ProductsPage() {
         Cookies.remove("user");
       }
     }
-  }, []);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/product-categories/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCategories(response.data);
-      } catch (error) {
-        console.error("Error al cargar las categorías:", error);
-      }
-    };
-    fetchCategories();
-  }, []);
-
-  useEffect(() => {
-    const fetchBrands = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/product-brands/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setBrands(response.data);
-      } catch (error) {
-        console.error("Error al cargar las marcas:", error);
-      }
-    };
-    fetchBrands();
   }, []);
 
   const handleFilterCategory = useCallback((key) => {
@@ -151,6 +105,7 @@ export default function ProductsPage() {
 
   const handleDeleteClick = useCallback((product) => {
     setProductToDelete(product);
+    setError(null);
     onOpen();
   }, [onOpen]);
 
@@ -158,14 +113,15 @@ export default function ProductsPage() {
     if (!productToDelete) return;
 
     setDeleting(true);
+    setError(null);
     const token = Cookies.get("access_token");
     try {
-      await api.delete(`/products/${productToDelete.id}/`, {
+      await api.delete(`/products/${productToDelete.slug}/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
-      setProducts((prevProducts) => prevProducts.filter(c => c.id !== productToDelete.id));
+      await fetchProducts();
       onClose();
     } catch (error) {
       console.error("Error al eliminar producto:", error);
@@ -173,7 +129,7 @@ export default function ProductsPage() {
     } finally {
       setDeleting(false);
     }
-  }, [productToDelete, onClose]);
+  }, [productToDelete, onClose, fetchProducts]);
 
   const columns = [
     { key: 'id', label: '#', sortable: true },
@@ -268,8 +224,12 @@ export default function ProductsPage() {
       id: product.id,
       barcode: product.barcode,
       name: product.name,
-      retail_price: `${parseFloat(product.retail_price).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`,
-      wholesale_price: `${product.wholesale_price ? parseFloat(product.wholesale_price).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }) : ''}`,
+      retail_price: product.retail_price != null 
+        ? `${parseFloat(product.retail_price).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`
+        : '',
+      wholesale_price: product.wholesale_price != null 
+        ? `${parseFloat(product.wholesale_price).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`
+        : '',
       weight: product.weight ? `${parseFloat(product.weight).toLocaleString('es-AR')} ${product.weight_unit}` : '',
       category: product.category_details?.name || '',
       brand: product.brand_details?.name || '',
@@ -295,7 +255,7 @@ export default function ProductsPage() {
               color="danger"
               onPress={() => handleDeleteClick(product)}
               aria-label={`Eliminar producto ${product.name}`}
-              isDisabled={user.user_type != 'ADMIN'}
+              isDisabled={user?.user_type !== 'ADMIN'}
             >
               <IconTrash className="h-5" />
             </Button>
@@ -303,7 +263,7 @@ export default function ProductsPage() {
         </div>
       )
     }))
-  ), [filteredProducts, handleDeleteClick, router]);
+  ), [filteredProducts, handleDeleteClick, router, user]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
@@ -366,6 +326,7 @@ export default function ProductsPage() {
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
 
+      {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Productos</p>
         <div className="flex flex-wrap gap-2">
@@ -400,6 +361,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {/* Barra de Búsqueda y Filtros */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
         <Input
           placeholder="Buscar productos"
@@ -417,6 +379,7 @@ export default function ProductsPage() {
           isClearable={true}
         />
         <div className="flex space-x-4">
+          {/* Filtro de Categoría */}
           <Dropdown>
             <DropdownTrigger>
               <Button
@@ -444,6 +407,7 @@ export default function ProductsPage() {
             </DropdownMenu>
           </Dropdown>
 
+          {/* Filtro de Marca */}
           <Dropdown>
             <DropdownTrigger>
               <Button
@@ -473,14 +437,15 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {/* Tabla de Productos */}
       <div className="overflow-x-auto border rounded-md">
-        {loading ? (
+        {(loadingProducts || loadingBrands || loadingCategories) ? (
           <div className="flex justify-center items-center p-6">
             <Spinner size="lg" />
           </div>
-        ) : error ? (
+        ) : (errorProducts || errorBrands || errorCategories || error) ? (
           <div className="text-red-500 text-center p-6">
-            {error}
+            {errorProducts || errorBrands || errorCategories || error}
           </div>
         ) : currentItemsCount === 0 ? (
           <div className="text-center p-6">
@@ -536,7 +501,8 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {!loading && !error && currentItemsCount !== 0 && (
+      {/* Paginación y Contador */}
+      {!loadingProducts && !errorProducts && currentItemsCount !== 0 && (
         <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
             Mostrando {currentItemsCount} de {totalItems} productos
@@ -549,12 +515,11 @@ export default function ProductsPage() {
             size="sm"
             showShadow={true}
             color="primary"
-            boundaryCount={1}
-            siblingCount={1}
           />
         </div>
       )}
 
+      {/* Modal de Confirmación de Eliminación */}
       <Modal isOpen={isOpen} onOpenChange={onClose} aria-labelledby="modal-title" placement="top-center">
         <ModalContent>
           {() => (
@@ -565,6 +530,11 @@ export default function ProductsPage() {
                   ¿Estás seguro de que deseas eliminar el producto <strong>{productToDelete?.name}</strong>?
                   Esta acción no se puede deshacer.
                 </p>
+                {error && (
+                  <p className="text-red-500 mt-2">
+                    {error}
+                  </p>
+                )}
               </ModalBody>
               <ModalFooter>
                 <Button

@@ -12,12 +12,17 @@ import {
   Textarea
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft } from "@tabler/icons-react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+import useProductCategories from "@/app/hooks/useProductCategories";
+import useProductBrands from "@/app/hooks/useProductBrands";
 
 export default function CreateProductPage() {
+  const { categories, loading: categoriesLoading, error: categoriesError } = useProductCategories();
+  const { productBrands: brands, loading: brandsLoading, error: brandsError } = useProductBrands();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -31,56 +36,11 @@ export default function CreateProductPage() {
   const [category, setCategory] = useState(null);
   const [brand, setBrand] = useState(null);
 
-  const [categories, setCategories] = useState([]);
-  const [brands, setBrands] = useState([]);
-
   const router = useRouter();
 
-  // Funciones de Validación
   const isValidPrice = (price) => {
     return /^\d+(\.\d{1,2})?$/.test(price) && parseFloat(price) > 0;
   };
-
-  const isValidBarcode = (barcode) => {
-    // Validar que el código de barras tenga entre 8 y 15 dígitos
-    return /^\d{8,15}$/.test(barcode);
-  };
-
-  // Fetch de Categorías y Marcas
-  useEffect(() => {
-    const fetchCategories = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/product-categories/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCategories(response.data);
-      } catch (error) {
-        console.error("Error al cargar las categorías:", error);
-        setError("Error al cargar las categorías.");
-      }
-    };
-
-    const fetchBrands = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/product-brands/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setBrands(response.data);
-      } catch (error) {
-        console.error("Error al cargar las marcas:", error);
-        setError("Error al cargar las marcas.");
-      }
-    };
-
-    fetchCategories();
-    fetchBrands();
-  }, []);
 
   const handleCreateProduct = useCallback(async () => {
     setLoading(true);
@@ -116,7 +76,6 @@ export default function CreateProductPage() {
       return;
     }
 
-    // Preparar Datos para Enviar
     const productData = {
       barcode,
       name,
@@ -146,12 +105,10 @@ export default function CreateProductPage() {
         },
       });
 
-      // Redireccionar tras la creación exitosa
       router.push("/dashboard/products");
     } catch (error) {
       console.error("Error al crear producto:", error);
       if (error.response && error.response.data) {
-        // Mostrar errores específicos de la API
         const apiErrors = Object.values(error.response.data).flat();
         setError(apiErrors.join(" "));
       } else {
@@ -161,6 +118,22 @@ export default function CreateProductPage() {
       setLoading(false);
     }
   }, [barcode, name, retailPrice, wholesalePrice, weight, weightUnit, description, category, brand, router]);
+
+  if (categoriesLoading || brandsLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (categoriesError || brandsError) {
+    return (
+      <div className="text-red-500 text-center p-6">
+        {categoriesError || brandsError}
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
@@ -233,7 +206,6 @@ export default function CreateProductPage() {
             </div>
           }
         />
-        {/* Campos de Peso y Unidad de Peso Alineados */}
         <div className="flex flex-col md:flex-row md:items-end gap-4">
           <div className="flex-1">
             <Input

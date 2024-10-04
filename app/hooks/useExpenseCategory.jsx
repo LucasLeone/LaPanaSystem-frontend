@@ -13,7 +13,7 @@ const useExpenseCategory = (expenseCategoryId) => {
 
     const token = Cookies.get('access_token');
     try {
-      const response = await api.get(`/expense-categores/${id}`, {
+      const response = await api.get(`/expense-categories/${id}`, {
         headers: {
           Authorization: `Token ${token}`,
         }

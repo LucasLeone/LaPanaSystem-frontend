@@ -148,12 +148,10 @@ export default function EditSalePage() {
   const saleDetailsWithPrices = useMemo(() => {
     return saleDetails.map((detail, index) => {
       if (!detail.product || !isValidQuantity(detail.quantity)) {
-        console.log(`Detalle ${index + 1} inválido: producto o cantidad faltante.`);
         return { ...detail, price: 0, subtotal: 0 };
       }
       const product = products.find((p) => p.id === parseInt(detail.product));
       if (!product) {
-        console.log(`Producto con ID ${detail.product} no encontrado.`);
         return { ...detail, price: 0, subtotal: 0 };
       }
 
@@ -170,13 +168,11 @@ export default function EditSalePage() {
       }
 
       if (isNaN(price)) {
-        console.log(`Precio inválido para producto ID ${detail.product}.`);
         price = 0;
       }
 
       const quantity = parseFloat(detail.quantity);
       if (isNaN(quantity)) {
-        console.log(`Cantidad inválida para detalle ${index + 1}: ${detail.quantity}.`);
         return { ...detail, price: 0, subtotal: 0 };
       }
 

@@ -3,7 +3,7 @@ import api from '../axios';
 import Cookies from 'js-cookie';
 
 const useProductCategory = (productCategoryId) => {
-  const [productCategory, setProductCategory] = useState([]);
+  const [productCategory, setProductCategory] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -13,7 +13,7 @@ const useProductCategory = (productCategoryId) => {
 
     const token = Cookies.get('access_token');
     try {
-      const response = await api.get(`/product-categories/${id}`, {
+      const response = await api.get(`/product-categories/${id}/`, {
         headers: {
           Authorization: `Token ${token}`,
         }
@@ -27,10 +27,9 @@ const useProductCategory = (productCategoryId) => {
     }
   };
 
-
   useEffect(() => {
     if (productCategoryId) {
-        fetchProductCategory(productCategoryId);
+      fetchProductCategory(productCategoryId);
     }
   }, [productCategoryId]);
 

@@ -2,18 +2,18 @@ import { useState, useEffect } from 'react';
 import api from '../axios';
 import Cookies from 'js-cookie';
 
-const useProduct = (productId) => {
+const useProduct = (productSlug) => {
   const [product, setProduct] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchProduct = async (id) => {
+  const fetchProduct = async (slug) => {
     setLoading(true);
     setError(null);
 
     const token = Cookies.get('access_token');
     try {
-      const response = await api.get(`/products/${id}`, {
+      const response = await api.get(`/products/${slug}`, {
         headers: {
           Authorization: `Token ${token}`,
         }
@@ -29,10 +29,10 @@ const useProduct = (productId) => {
 
 
   useEffect(() => {
-    if (productId) {
-        fetchProduct(productId);
+    if (productSlug) {
+        fetchProduct(productSlug);
     }
-  }, [productId]);
+  }, [productSlug]);
 
   return { product, loading, error, fetchProduct };
 };

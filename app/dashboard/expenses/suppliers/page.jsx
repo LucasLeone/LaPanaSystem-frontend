@@ -34,57 +34,28 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+import useSuppliers from "@/app/hooks/useSuppliers";
 
 export default function SuppliersPage() {
-  const [suppliers, setSuppliers] = useState([]);
+  const { suppliers, loading, error: suppliersError, fetchSuppliers } = useSuppliers();
+
   const [rowsPerPage] = useState(10);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
+
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [supplierToDelete, setSupplierToDelete] = useState(null);
+
   const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
+
   const [user, setUser] = useState(null);
 
   const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  // Función para formatear números de teléfono (opcional)
-  const formatPhoneNumber = useCallback((phone) => {
-    // Implementa aquí el formateo si lo deseas
-    return phone;
-  }, []);
-
-  // Función para formatear fechas (si aplica)
-  const formatDate = useCallback((dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  }, []);
-
-  // Fetch de proveedores
   useEffect(() => {
-    const fetchSuppliers = async () => {
-      setLoading(true);
-      setError(null);
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/suppliers/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setSuppliers(response.data);
-      } catch (error) {
-        console.error("Error al cargar los proveedores:", error);
-        setError("Error al cargar los proveedores.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSuppliers();
-
     const userData = Cookies.get("user");
     if (userData) {
       try {
@@ -96,22 +67,22 @@ export default function SuppliersPage() {
     }
   }, []);
 
-  // Manejo de búsqueda
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
     setPage(1);
   }, []);
 
-  // Manejo de eliminación
   const handleDeleteClick = useCallback((supplier) => {
     setSupplierToDelete(supplier);
     onOpen();
+    setDeleteError(null);
   }, [onOpen]);
 
   const handleDeleteSupplier = useCallback(async () => {
     if (!supplierToDelete) return;
 
     setDeleting(true);
+    setDeleteError(null);
     const token = Cookies.get("access_token");
     try {
       await api.delete(`/suppliers/${supplierToDelete.id}/`, {
@@ -119,17 +90,16 @@ export default function SuppliersPage() {
           Authorization: `Token ${token}`,
         },
       });
-      setSuppliers((prevSuppliers) => prevSuppliers.filter(s => s.id !== supplierToDelete.id));
+      await fetchSuppliers();
       onClose();
     } catch (error) {
       console.error("Error al eliminar proveedor:", error);
-      setError("Error al eliminar el proveedor.");
+      setDeleteError("Error al eliminar el proveedor.");
     } finally {
       setDeleting(false);
     }
-  }, [supplierToDelete, onClose]);
+  }, [supplierToDelete, onClose, fetchSuppliers]);
 
-  // Definición de columnas
   const columns = [
     { key: 'id', label: '#', sortable: true },
     { key: 'name', label: 'Nombre', sortable: true },
@@ -139,7 +109,6 @@ export default function SuppliersPage() {
     { key: 'actions', label: 'Acciones', sortable: false },
   ];
 
-  // Ordenamiento de proveedores
   const sortedSuppliers = useMemo(() => {
     if (!sortDescriptor.column) return [...suppliers];
     const sorted = [...suppliers].sort((a, b) => {
@@ -164,7 +133,6 @@ export default function SuppliersPage() {
     return sorted;
   }, [suppliers, sortDescriptor]);
 
-  // Filtrado y búsqueda
   const filteredSuppliers = useMemo(() => {
     let filtered = [...sortedSuppliers];
 
@@ -181,12 +149,11 @@ export default function SuppliersPage() {
     return filtered;
   }, [sortedSuppliers, searchQuery]);
 
-  // Mapeo de proveedores a filas de la tabla
   const rows = useMemo(() => (
     filteredSuppliers.map(supplier => ({
       id: supplier.id,
       name: supplier.name,
-      phone_number: formatPhoneNumber(supplier.phone_number),
+      phone_number: supplier.phone_number,
       email: supplier.email,
       address: supplier.address,
       actions: (
@@ -211,7 +178,7 @@ export default function SuppliersPage() {
               color="danger"
               onPress={() => handleDeleteClick(supplier)}
               aria-label={`Eliminar proveedor ${supplier.name}`}
-              isDisabled={user.user_type != 'ADMIN'}
+              isDisabled={user?.user_type !== 'ADMIN'}
             >
               <IconTrash className="h-5" />
             </Button>
@@ -219,19 +186,17 @@ export default function SuppliersPage() {
         </div>
       )
     }))
-  ), [filteredSuppliers, handleDeleteClick, router, formatPhoneNumber]);
+  ), [filteredSuppliers, handleDeleteClick, router, user]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
 
-  // Reseteo de página si excede el total de páginas
   useEffect(() => {
     if (page > totalPages && totalPages > 0) {
       setPage(1);
     }
   }, [totalPages, page]);
 
-  // Paginación
   const currentItems = useMemo(() => {
     const startIdx = (page - 1) * rowsPerPage;
     const endIdx = startIdx + rowsPerPage;
@@ -244,7 +209,6 @@ export default function SuppliersPage() {
     setPage(newPage);
   }, []);
 
-  // Función para manejar el cambio de ordenamiento
   const handleSortChange = useCallback((columnKey) => {
     setSortDescriptor(prev => {
       if (prev.column === columnKey) {
@@ -261,7 +225,6 @@ export default function SuppliersPage() {
     });
   }, []);
 
-  // Función para renderizar los encabezados con ordenamiento
   const renderHeader = useCallback((column) => {
     const isSortable = column.sortable;
     const isSorted = sortDescriptor.column === column.key;
@@ -339,9 +302,9 @@ export default function SuppliersPage() {
           <div className="flex justify-center items-center p-6">
             <Spinner size="lg" />
           </div>
-        ) : error ? (
+        ) : suppliersError ? (
           <div className="text-red-500 text-center p-6">
-            {error}
+            {suppliersError}
           </div>
         ) : currentItemsCount === 0 ? (
           <div className="text-center p-6">
@@ -398,7 +361,7 @@ export default function SuppliersPage() {
       </div>
 
       {/* Paginación y Contador */}
-      {!loading && !error && currentItemsCount !== 0 && (
+      {!loading && !suppliersError && currentItemsCount !== 0 && (
         <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
             Mostrando {currentItemsCount} de {totalItems} proveedores
@@ -411,7 +374,6 @@ export default function SuppliersPage() {
             size="sm"
             showShadow={true}
             color="primary"
-            boundaryCount={1}
           />
         </div>
       )}
@@ -427,6 +389,11 @@ export default function SuppliersPage() {
                   ¿Estás seguro de que deseas eliminar al proveedor <strong>{supplierToDelete?.name}</strong>?
                   Esta acción no se puede deshacer.
                 </p>
+                {deleteError && (
+                  <p className="text-red-500 mt-2">
+                    {deleteError}
+                  </p>
+                )}
               </ModalBody>
               <ModalFooter>
                 <Button

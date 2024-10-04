@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../axios';
 import Cookies from 'js-cookie';
 
@@ -7,7 +7,7 @@ const useExpenses = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -25,14 +25,13 @@ const useExpenses = () => {
     } finally {
       setLoading(false);
     }
-  };
-
+  }, []);
 
   useEffect(() => {
     fetchExpenses();
-  }, []);
+  }, [fetchExpenses]);
 
-  return { expenses, loading, error, fetchExpenses };
+  return { expenses, loading, error, refetch: fetchExpenses };
 };
 
 export default useExpenses;

@@ -41,50 +41,35 @@ import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { capitalize } from "@/app/utils";
+import useCustomers from "@/app/hooks/useCustomers";
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState([]);
-  const rowsPerPage = 10; // Definido como constante
+  const { customers, loading: customersLoading, error: customersError, fetchCustomers } = useCustomers();
+  
+  const rowsPerPage = 10;
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false); // Estado para manejar la eliminación
+  
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
+  
   const [filterKey, setFilterKey] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [customerToDelete, setCustomerToDelete] = useState(null); // Cliente a eliminar
-  const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null }); // Añadido
+  
+  const [customerToDelete, setCustomerToDelete] = useState(null);
+  const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
+  
   const [user, setUser] = useState(null);
   
   const router = useRouter();
-  const { isOpen, onOpen, onClose } = useDisclosure(); // Control del modal
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const filterItems = [
     { key: "minorista", label: "Minorista" },
     { key: "mayorista", label: "Mayorista" },
   ];
 
-  // Fetch de clientes
   useEffect(() => {
-    const fetchCustomers = async () => {
-      setLoading(true);
-      setError(null);
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/customers/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCustomers(response.data);
-      } catch (error) {
-        console.error(error);
-        setError("Error al cargar los clientes.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCustomers();
-
     const userData = Cookies.get("user");
     if (userData) {
       try {
@@ -96,7 +81,6 @@ export default function CustomersPage() {
     }
   }, []);
 
-  // Manejo de acciones de filtro
   const handleFilterAction = useCallback((key) => {
     if (key === "none") {
       setFilterKey(null);
@@ -106,19 +90,16 @@ export default function CustomersPage() {
     setPage(1);
   }, []);
 
-  // Manejo de cambio en la búsqueda (sin debounce)
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
     setPage(1);
   }, []);
 
-  // Función para abrir el modal y setear el cliente a eliminar
   const handleDeleteClick = useCallback((customer) => {
     setCustomerToDelete(customer);
     onOpen();
   }, [onOpen]);
 
-  // Función para eliminar el cliente
   const handleDeleteCustomer = useCallback(async () => {
     if (!customerToDelete) return;
 
@@ -130,7 +111,7 @@ export default function CustomersPage() {
           Authorization: `Token ${token}`,
         },
       });
-      setCustomers((prevCustomers) => prevCustomers.filter(c => c.id !== customerToDelete.id));
+      fetchCustomers();
       onClose();
     } catch (error) {
       console.error("Error al eliminar cliente:", error);
@@ -138,7 +119,7 @@ export default function CustomersPage() {
     } finally {
       setDeleting(false);
     }
-  }, [customerToDelete, onClose]);
+  }, [customerToDelete, onClose, fetchCustomers]);
 
   const columns = [
     { key: 'id', label: '#', sortable: true },
@@ -150,7 +131,6 @@ export default function CustomersPage() {
     { key: 'actions', label: 'Acciones', sortable: false },
   ];
 
-  // Ordenamiento de los clientes según la columna seleccionada
   const sortedCustomers = useMemo(() => {
     if (!sortDescriptor.column) return [...customers];
     const sorted = [...customers].sort((a, b) => {
@@ -174,11 +154,9 @@ export default function CustomersPage() {
     return sorted;
   }, [customers, sortDescriptor]);
 
-  // Filtrado y búsqueda
   const filteredCustomers = useMemo(() => {
     let filtered = [...sortedCustomers];
 
-    // Filtrar por tipo de cliente si se ha seleccionado un filtro
     if (filterKey) {
       const normalizedFilterKey = filterKey.toLowerCase().trim();
       filtered = filtered.filter(customer =>
@@ -187,7 +165,6 @@ export default function CustomersPage() {
       );
     }
 
-    // Aplicar búsqueda sobre los datos filtrados
     if (searchQuery) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(customer =>
@@ -200,7 +177,6 @@ export default function CustomersPage() {
     return filtered;
   }, [sortedCustomers, filterKey, searchQuery]);
 
-  // Mapeo de clientes a filas de la tabla
   const rows = useMemo(() => (
     filteredCustomers.map(customer => ({
       id: customer.id,
@@ -218,7 +194,7 @@ export default function CustomersPage() {
               isIconOnly
               color="warning"
               onPress={() => router.push(`/dashboard/customers/edit/${customer.id}`)}
-              aria-label={`Editar cliente ${customer.name}`} // Mejoras de accesibilidad
+              aria-label={`Editar cliente ${customer.name}`}
             >
               <IconEdit className="h-8" />
             </Button>
@@ -230,8 +206,8 @@ export default function CustomersPage() {
               isIconOnly
               color="danger"
               onPress={() => handleDeleteClick(customer)}
-              aria-label={`Eliminar cliente ${customer.name}`} // Mejoras de accesibilidad
-              isDisabled={user.user_type != 'ADMIN'}
+              aria-label={`Eliminar cliente ${customer.name}`}
+              isDisabled={user?.user_type !== 'ADMIN'}
             >
               <IconTrash className="h-8" />
             </Button>
@@ -239,19 +215,17 @@ export default function CustomersPage() {
         </div>
       )
     }))
-  ), [filteredCustomers, handleDeleteClick, router]);
+  ), [filteredCustomers, handleDeleteClick, router, user]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
 
-  // Reseteo de página si excede el total de páginas
   useEffect(() => {
     if (page > totalPages && totalPages > 0) {
       setPage(1);
     }
   }, [totalPages, page]);
 
-  // Paginación
   const currentItems = useMemo(() => {
     const startIdx = (page - 1) * rowsPerPage;
     const endIdx = startIdx + rowsPerPage;
@@ -264,17 +238,14 @@ export default function CustomersPage() {
     setPage(newPage);
   }, []);
 
-  // Función para manejar el cambio de ordenamiento
   const handleSortChange = useCallback((columnKey) => {
     setSortDescriptor(prev => {
       if (prev.column === columnKey) {
-        // Toggle direction
         return {
           column: columnKey,
           direction: prev.direction === "ascending" ? "descending" : "ascending"
         };
       } else {
-        // Nueva columna, por defecto ascendente
         return {
           column: columnKey,
           direction: "ascending"
@@ -283,7 +254,6 @@ export default function CustomersPage() {
     });
   }, []);
 
-  // Función para renderizar los encabezados con ordenamiento
   const renderHeader = useCallback((column) => {
     const isSortable = column.sortable;
     const isSorted = sortDescriptor.column === column.key;
@@ -368,13 +338,13 @@ export default function CustomersPage() {
 
       {/* Tabla de Clientes */}
       <div className="overflow-x-auto border rounded-md">
-        {loading ? (
+        {customersLoading ? (
           <div className="flex justify-center items-center p-6">
             <Spinner size="lg" />
           </div>
-        ) : error ? (
+        ) : customersError ? (
           <div className="text-red-500 text-center p-6">
-            {error}
+            {customersError}
           </div>
         ) : currentItemsCount === 0 ? (
           <div className="text-center p-6">
@@ -424,7 +394,7 @@ export default function CustomersPage() {
       </div>
 
       {/* Paginación y Contador */}
-      {!loading && !error && currentItemsCount !== 0 && (
+      {!customersLoading && !customersError && currentItemsCount !== 0 && (
         <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
             Mostrando {currentItemsCount} de {totalItems} clientes

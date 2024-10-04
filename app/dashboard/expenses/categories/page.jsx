@@ -32,44 +32,26 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+import useExpenseCategories from "@/app/hooks/useExpenseCategories";
 
 export default function ExpenseCategoriesPage() {
-  const [categories, setCategories] = useState([]);
-  const [rowsPerPage] = useState(10); // Definido como constante
+  const { expenseCategories: categories, loading, error: expenseCategoriesError, fetchExpenseCategories } = useExpenseCategories();
+  
+  const [rowsPerPage] = useState(10);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false); // Estado para manejar la eliminación
+  
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
+  
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryToDelete, setCategoryToDelete] = useState(null); // Categoría a eliminar
-  const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null }); // Añadido
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
   const [user, setUser] = useState(null);
 
   const router = useRouter();
-  const { isOpen, onOpen, onClose } = useDisclosure(); // Control del modal
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
-  // Fetch de categorías de gastos
   useEffect(() => {
-    const fetchCategories = async () => {
-      setLoading(true);
-      setError(null);
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/expense-categories/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCategories(response.data);
-      } catch (error) {
-        console.error("Error al cargar las categorías de gastos:", error);
-        setError("Error al cargar las categorías de gastos.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCategories();
-
     const userData = Cookies.get("user");
     if (userData) {
       try {
@@ -81,32 +63,28 @@ export default function ExpenseCategoriesPage() {
     }
   }, []);
 
-  // Manejo de cambio en la búsqueda (sin debounce)
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
     setPage(1);
   }, []);
 
-  // Función para abrir el modal y setear la categoría a eliminar
   const handleDeleteClick = useCallback((category) => {
     setCategoryToDelete(category);
     onOpen();
   }, [onOpen]);
 
-  // Función para eliminar la categoría
   const handleDeleteCategory = useCallback(async () => {
     if (!categoryToDelete) return;
 
     setDeleting(true);
     const token = Cookies.get("access_token");
     try {
-      // Asegúrate de que el endpoint de eliminación utiliza el ID de la categoría
       await api.delete(`/expense-categories/${categoryToDelete.id}/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
-      setCategories((prevCategories) => prevCategories.filter(c => c.id !== categoryToDelete.id));
+      fetchExpenseCategories();
       onClose();
     } catch (error) {
       console.error("Error al eliminar la categoría de gastos:", error);
@@ -114,7 +92,7 @@ export default function ExpenseCategoriesPage() {
     } finally {
       setDeleting(false);
     }
-  }, [categoryToDelete, onClose]);
+  }, [categoryToDelete, onClose, fetchExpenseCategories]);
 
   const columns = [
     { key: 'id', label: '#', sortable: true },
@@ -123,7 +101,6 @@ export default function ExpenseCategoriesPage() {
     { key: 'actions', label: 'Acciones', sortable: false },
   ];
 
-  // Ordenamiento de las categorías según la columna seleccionada
   const sortedCategories = useMemo(() => {
     if (!sortDescriptor.column) return [...categories];
     const sorted = [...categories].sort((a, b) => {
@@ -149,11 +126,9 @@ export default function ExpenseCategoriesPage() {
     return sorted;
   }, [categories, sortDescriptor]);
 
-  // Filtrado y búsqueda
   const filteredCategories = useMemo(() => {
     let filtered = [...sortedCategories];
 
-    // Aplicar búsqueda sobre los datos filtrados
     if (searchQuery) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(category =>
@@ -165,7 +140,6 @@ export default function ExpenseCategoriesPage() {
     return filtered;
   }, [sortedCategories, searchQuery]);
 
-  // Mapeo de categorías a filas de la tabla
   const rows = useMemo(() => (
     filteredCategories.map(category => ({
       id: category.id,
@@ -180,7 +154,7 @@ export default function ExpenseCategoriesPage() {
               isIconOnly
               color="warning"
               onPress={() => router.push(`/dashboard/expenses/categories/edit/${category.id}`)}
-              aria-label={`Editar categoría ${category.name}`} // Mejoras de accesibilidad
+              aria-label={`Editar categoría ${category.name}`}
             >
               <IconEdit className="h-5" />
             </Button>
@@ -192,8 +166,8 @@ export default function ExpenseCategoriesPage() {
               isIconOnly
               color="danger"
               onPress={() => handleDeleteClick(category)}
-              aria-label={`Eliminar categoría ${category.name}`} // Mejoras de accesibilidad
-              isDisabled={user.user_type != 'ADMIN'}
+              aria-label={`Eliminar categoría ${category.name}`}
+              isDisabled={user?.user_type !== 'ADMIN'}
             >
               <IconTrash className="h-5" />
             </Button>
@@ -201,19 +175,17 @@ export default function ExpenseCategoriesPage() {
         </div>
       )
     }))
-  ), [filteredCategories, handleDeleteClick, router]);
+  ), [filteredCategories, handleDeleteClick, router, user]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
 
-  // Reseteo de página si excede el total de páginas
   useEffect(() => {
     if (page > totalPages && totalPages > 0) {
       setPage(1);
     }
   }, [totalPages, page]);
 
-  // Paginación
   const currentItems = useMemo(() => {
     const startIdx = (page - 1) * rowsPerPage;
     const endIdx = startIdx + rowsPerPage;
@@ -226,17 +198,14 @@ export default function ExpenseCategoriesPage() {
     setPage(newPage);
   }, []);
 
-  // Función para manejar el cambio de ordenamiento
   const handleSortChange = useCallback((columnKey) => {
     setSortDescriptor(prev => {
       if (prev.column === columnKey) {
-        // Toggle direction
         return {
           column: columnKey,
           direction: prev.direction === "ascending" ? "descending" : "ascending"
         };
       } else {
-        // Nueva columna, por defecto ascendente
         return {
           column: columnKey,
           direction: "ascending"
@@ -245,7 +214,6 @@ export default function ExpenseCategoriesPage() {
     });
   }, []);
 
-  // Función para renderizar los encabezados con ordenamiento
   const renderHeader = useCallback((column) => {
     const isSortable = column.sortable;
     const isSorted = sortDescriptor.column === column.key;
@@ -323,9 +291,9 @@ export default function ExpenseCategoriesPage() {
           <div className="flex justify-center items-center p-6">
             <Spinner size="lg" />
           </div>
-        ) : error ? (
+        ) : expenseCategoriesError ? (
           <div className="text-red-500 text-center p-6">
-            {error}
+            {expenseCategoriesError}
           </div>
         ) : currentItemsCount === 0 ? (
           <div className="text-center p-6">
@@ -382,7 +350,7 @@ export default function ExpenseCategoriesPage() {
       </div>
 
       {/* Paginación y Contador */}
-      {!loading && !error && currentItemsCount !== 0 && (
+      {!loading && !expenseCategoriesError && currentItemsCount !== 0 && (
         <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
             Mostrando {currentItemsCount} de {totalItems} categorías
@@ -395,8 +363,6 @@ export default function ExpenseCategoriesPage() {
             size="sm"
             showShadow={true}
             color="primary"
-            boundaryCount={1}
-            // siblingCount={1} // Eliminado para evitar la advertencia
           />
         </div>
       )}

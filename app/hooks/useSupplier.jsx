@@ -3,7 +3,7 @@ import api from '../axios';
 import Cookies from 'js-cookie';
 
 const useSupplier = (supplierId) => {
-  const [supplier, setSupplier] = useState([]);
+  const [supplier, setSupplier] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -13,10 +13,10 @@ const useSupplier = (supplierId) => {
 
     const token = Cookies.get('access_token');
     try {
-      const response = await api.get(`/supplier/${id}`, {
+      const response = await api.get(`/suppliers/${id}/`, {
         headers: {
           Authorization: `Token ${token}`,
-        }
+        },
       });
       setSupplier(response.data);
     } catch (err) {
@@ -27,10 +27,9 @@ const useSupplier = (supplierId) => {
     }
   };
 
-
   useEffect(() => {
     if (supplierId) {
-        fetchSupplier(supplierId);
+      fetchSupplier(supplierId);
     }
   }, [supplierId]);
 

@@ -16,10 +16,21 @@ import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import useProductCategories from "@/app/hooks/useProductCategories";
+import useProductBrands from "@/app/hooks/useProductBrands";
+import useProduct from "@/app/hooks/useProduct";
 
 export default function EditProductPage() {
+  const router = useRouter();
+  const params = useParams();
+  const slug = params.slug;
+
+  const { categories, loading: categoriesLoading, error: categoriesError } = useProductCategories();
+  const { productBrands: brands, loading: brandsLoading, error: brandsError } = useProductBrands();
+  const { product, loading: productLoading, error: productError } = useProduct(slug);
+
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true); // Para el estado de carga inicial
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [id, setId] = useState("");
@@ -33,88 +44,28 @@ export default function EditProductPage() {
   const [category, setCategory] = useState(null);
   const [brand, setBrand] = useState(null);
 
-  const [categories, setCategories] = useState([]);
-  const [brands, setBrands] = useState([]);
-
-  const router = useRouter();
-  const params = useParams(); // Obtener los parámetros de la URL
-  const slug = params.slug; // Asumiendo que el parámetro se llama 'slug'
-
-  // Funciones de Validación
   const isValidPrice = (price) => {
     return /^\d+(\.\d{1,2})?$/.test(price) && parseFloat(price) > 0;
   };
 
-  const isValidBarcode = (barcode) => {
-    // Validar que el código de barras tenga entre 8 y 15 dígitos
-    return /^\d{8,15}$/.test(barcode);
-  };
-
-  // Fetch de Categorías, Marcas y Datos del Producto
   useEffect(() => {
-    const fetchCategories = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/product-categories/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCategories(response.data);
-      } catch (error) {
-        console.error("Error al cargar las categorías:", error);
-        setError("Error al cargar las categorías.");
-      }
-    };
+    if (product) {
+      setId(product.id || "");
+      setBarcode(product.barcode || "");
+      setName(product.name || "");
+      setRetailPrice(product.retail_price ? product.retail_price.toString() : "");
+      setWholesalePrice(product.wholesale_price ? product.wholesale_price.toString() : "");
+      setWeight(product.weight ? product.weight.toString() : "");
+      setWeightUnit(product.weight_unit || null);
+      setDescription(product.description || "");
+      setCategory(product.category_details?.id || null);
+      setBrand(product.brand_details?.id || null);
+      setInitialLoading(false);
+    }
+  }, [product]);
 
-    const fetchBrands = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/product-brands/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setBrands(response.data);
-      } catch (error) {
-        console.error("Error al cargar las marcas:", error);
-        setError("Error al cargar las marcas.");
-      }
-    };
-
-    const fetchProduct = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get(`/products/${slug}/`, {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        const product = response.data;
-        setId(product.id);
-        setBarcode(product.barcode);
-        setName(product.name);
-        setRetailPrice(product.retail_price.toString());
-        setWholesalePrice(product.wholesale_price ? product.wholesale_price.toString() : "");
-        setWeight(product.weight ? product.weight.toString() : "");
-        setWeightUnit(product.weight_unit || null);
-        setDescription(product.description || "");
-        setCategory(product.category_details.id);
-        setBrand(product.brand_details.id);
-      } catch (error) {
-        console.error("Error al cargar el producto:", error);
-        setError("Error al cargar el producto.");
-      } finally {
-        setInitialLoading(false);
-      }
-    };
-
-    // Llamar a todas las funciones de fetch
-    if (slug) {
-      fetchCategories();
-      fetchBrands();
-      fetchProduct();
-    } else {
+  useEffect(() => {
+    if (!slug) {
       setError("No se proporcionó un slug de producto.");
       setInitialLoading(false);
     }
@@ -124,7 +75,6 @@ export default function EditProductPage() {
     setLoading(true);
     setError(null);
 
-    // Validaciones de Campos Requeridos
     if (!barcode || !name || !retailPrice || !category || !brand) {
       setError("Por favor, completa todos los campos requeridos.");
       setLoading(false);
@@ -143,14 +93,12 @@ export default function EditProductPage() {
       return;
     }
 
-    // Validación Adicional: Si se proporciona peso, la unidad de peso debe ser válida
     if (weight && !weightUnit) {
       setError("Por favor, seleccione una unidad de peso.");
       setLoading(false);
       return;
     }
 
-    // Preparar Datos para Enviar
     const productData = {
       barcode,
       name,
@@ -187,12 +135,10 @@ export default function EditProductPage() {
         },
       });
 
-      // Redireccionar tras la actualización exitosa
       router.push("/dashboard/products");
     } catch (error) {
       console.error("Error al actualizar el producto:", error);
       if (error.response && error.response.data) {
-        // Mostrar errores específicos de la API
         const apiErrors = Object.values(error.response.data).flat();
         setError(apiErrors.join(" "));
       } else {
@@ -203,10 +149,18 @@ export default function EditProductPage() {
     }
   }, [barcode, name, retailPrice, wholesalePrice, weight, weightUnit, description, category, brand, slug, router]);
 
-  if (initialLoading) {
+  if (initialLoading || categoriesLoading || brandsLoading || productLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner size="xl" />
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (categoriesError || brandsError || productError) {
+    return (
+      <div className="text-red-500 text-center p-6">
+        {categoriesError || brandsError || productError}
       </div>
     );
   }
@@ -282,7 +236,6 @@ export default function EditProductPage() {
             </div>
           }
         />
-        {/* Campos de Peso y Unidad de Peso Alineados */}
         <div className="flex flex-col md:flex-row md:items-end gap-4">
           <div className="flex-1">
             <Input

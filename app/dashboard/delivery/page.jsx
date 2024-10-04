@@ -27,7 +27,6 @@ import {
 import {
   IconChevronDown,
   IconCheck,
-  // IconCash,
   IconDownload,
   IconFilter,
   IconTruck
@@ -74,8 +73,6 @@ export default function PendingDeliveriesPage() {
     if (filterCustomer) {
       filters.customer = filterCustomer;
     }
-
-    console.log(filters);
 
     return filters;
   }, [filterCustomer, filterDate]);

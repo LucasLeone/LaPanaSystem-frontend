@@ -11,62 +11,37 @@ import {
 } from "@nextui-org/react";
 import { IconEdit, IconArrowLeft } from "@tabler/icons-react";
 import { useState, useCallback, useEffect } from "react";
-import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter, useParams } from "next/navigation";
+import useProductBrand from "@/app/hooks/useProductBrand";
+import api from "@/app/axios";
 
 export default function EditBrandPage() {
+  const router = useRouter();
+  const params = useParams();
+  const { id } = params;
+  const { productBrand: brand, loading: loadingBrand, error: errorBrand, fetchBrand } = useProductBrand(id);
+  
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true); // Para la carga inicial de datos
   const [error, setError] = useState(null);
-
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  
+  useEffect(() => {
+    if (brand) {
+      setName(brand.name || "");
+      setDescription(brand.description || "");
+    }
+  }, [brand]);
 
-  const router = useRouter();
-  const params = useParams(); // Obtener parámetros de la URL
-  const { id } = params; // Asumiendo que la ruta es /dashboard/products/brands/edit/[id]
-
-  // Función de Validación
   const isValidName = (name) => {
     return name.trim().length > 0;
   };
-
-  // Fetch de datos de la marca al montar el componente
-  useEffect(() => {
-    const fetchBrand = async () => {
-      setInitialLoading(true);
-      setError(null);
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get(`/product-brands/${id}/`, {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setName(response.data.name);
-        setDescription(response.data.description || "");
-      } catch (error) {
-        console.error("Error al cargar la marca:", error);
-        setError("Error al cargar la marca.");
-      } finally {
-        setInitialLoading(false);
-      }
-    };
-
-    if (id) {
-      fetchBrand();
-    } else {
-      setError("ID de marca no proporcionado.");
-      setInitialLoading(false);
-    }
-  }, [id]);
 
   const handleUpdateBrand = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    // Validaciones
     if (!name) {
       setError("Por favor, completa el campo de nombre.");
       setLoading(false);
@@ -91,7 +66,6 @@ export default function EditBrandPage() {
       return;
     }
 
-    // Preparar Datos para Enviar
     const brandData = {
       name: name.trim(),
       description: description.trim(),
@@ -104,13 +78,10 @@ export default function EditBrandPage() {
           Authorization: `Token ${token}`,
         },
       });
-
-      // Redireccionar tras la actualización exitosa
       router.push("/dashboard/products/brands");
     } catch (error) {
       console.error("Error al actualizar la marca:", error);
       if (error.response && error.response.data) {
-        // Mostrar errores específicos de la API
         const apiErrors = Object.values(error.response.data).flat();
         setError(apiErrors.join(" "));
       } else {
@@ -121,10 +92,30 @@ export default function EditBrandPage() {
     }
   }, [id, name, description, router]);
 
-  if (initialLoading) {
+  if (loadingBrand || !brand) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (errorBrand) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-[92vw]">
+        <div className="flex items-center mb-4 gap-1">
+          <Link href="/dashboard/products/brands">
+            <Tooltip content="Volver" placement="bottom">
+              <Button variant="light" size="sm" isIconOnly>
+                <IconArrowLeft className="h-4" />
+              </Button>
+            </Tooltip>
+          </Link>
+          <p className="text-2xl font-bold">Editar Marca - #{id}</p>
+        </div>
+        <Code color="danger" className="text-wrap">
+          {errorBrand}
+        </Code>
       </div>
     );
   }
@@ -142,7 +133,6 @@ export default function EditBrandPage() {
         <p className="text-2xl font-bold">Editar Marca - #{id}</p>
       </div>
       {error && <Code color="danger" className="text-wrap">{error}</Code>}
-
       <div className="space-y-4 mt-4">
         <Input
           label="Nombre"
@@ -165,7 +155,6 @@ export default function EditBrandPage() {
           aria-label="Descripción de la Marca"
         />
       </div>
-
       <div className="mt-6">
         <Button
           className="rounded-md bg-black text-white"

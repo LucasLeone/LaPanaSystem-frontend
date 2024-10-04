@@ -14,62 +14,35 @@ import { useState, useCallback, useEffect } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter, useParams } from "next/navigation";
+import useExpenseCategory from "@/app/hooks/useExpenseCategory";
 
 export default function EditExpenseCategoryPage() {
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true); // Para carga inicial de datos
-  const [error, setError] = useState(null);
+  const router = useRouter();
+  const params = useParams();
+  const categoryId = params.id;
+
+  const { expenseCategory, loading: categoryLoading, error: categoryError } = useExpenseCategory(categoryId);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const router = useRouter();
-  const params = useParams();
-  const categoryId = params.id; // Obtener el ID de la categoría desde la URL
-
-  // Función de Validación
   const isValidName = (name) => {
     return name.trim().length > 0;
   };
 
-  // Fetch de datos de la categoría a editar
   useEffect(() => {
-    const fetchCategory = async () => {
-      if (!categoryId) {
-        setError("ID de categoría no proporcionado en la URL.");
-        setInitialLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get(`/expense-categories/${categoryId}/`, {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        const category = response.data;
-        setName(category.name);
-        setDescription(category.description || "");
-      } catch (error) {
-        console.error("Error al cargar la categoría:", error);
-        setError("Error al cargar la categoría.");
-      } finally {
-        setLoading(false);
-        setInitialLoading(false);
-      }
-    };
-
-    fetchCategory();
-  }, [categoryId]);
+    if (expenseCategory) {
+      setName(expenseCategory.name || "");
+      setDescription(expenseCategory.description || "");
+    }
+  }, [expenseCategory]);
 
   const handleUpdateCategory = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    // Validaciones
     if (!name) {
       setError("Por favor, completa el campo de nombre.");
       setLoading(false);
@@ -94,7 +67,6 @@ export default function EditExpenseCategoryPage() {
       return;
     }
 
-    // Preparar Datos para Enviar
     const categoryData = {
       name: name.trim(),
       description: description.trim(),
@@ -108,12 +80,10 @@ export default function EditExpenseCategoryPage() {
         },
       });
 
-      // Redireccionar tras la actualización exitosa
       router.push("/dashboard/expenses/categories");
     } catch (error) {
       console.error("Error al actualizar la categoría de gastos:", error);
       if (error.response && error.response.data) {
-        // Mostrar errores específicos de la API
         const apiErrors = Object.values(error.response.data).flat();
         setError(apiErrors.join(" "));
       } else {
@@ -124,7 +94,7 @@ export default function EditExpenseCategoryPage() {
     }
   }, [name, description, categoryId, router]);
 
-  if (initialLoading) {
+  if (categoryLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Spinner size="lg" />
@@ -134,7 +104,7 @@ export default function EditExpenseCategoryPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-      {/* Encabezado */}
+      
       <div className="flex items-center mb-4 gap-1">
         <Link href="/dashboard/expenses/categories">
           <Tooltip content="Volver" placement="bottom">
@@ -146,10 +116,10 @@ export default function EditExpenseCategoryPage() {
         <p className="text-2xl font-bold">Editar Categoría de Gastos</p>
       </div>
 
-      {/* Mostrar Errores */}
+      {categoryError && <Code color="danger" className="text-wrap">{categoryError}</Code>}
+
       {error && <Code color="danger" className="text-wrap">{error}</Code>}
 
-      {/* Formulario */}
       <div className="space-y-4 mt-4">
         <Input
           label="Nombre"
@@ -173,7 +143,6 @@ export default function EditExpenseCategoryPage() {
         />
       </div>
 
-      {/* Botón de Actualizar Categoría */}
       <div className="mt-6">
         <Button
           className="rounded-md bg-black text-white"

@@ -15,34 +15,37 @@ import { IconArrowLeft, IconEdit } from "@tabler/icons-react";
 import { useState, useCallback, useEffect } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
+import useExpenseCategories from "@/app/hooks/useExpenseCategories";
+import useSuppliers from "@/app/hooks/useSuppliers";
+import useExpense from "@/app/hooks/useExpense";
 
 export default function EditExpensePage() {
+  const router = useRouter();
+  const params = useParams();
+  const expenseId = params.id;
+
+  const { expense, loadingExpense, errorExpense } = useExpense(expenseId);
+  const { expenseCategories: categories, loadingCategories, errorCategories } = useExpenseCategories();
+  const { suppliers, loadingSuppliers, errorSuppliers } = useSuppliers();
+
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true); // Para carga inicial de datos
   const [error, setError] = useState(null);
 
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(getTodayDate()); // Establecer fecha predeterminada
+  const [date, setDate] = useState(getTodayDate());
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(null);
   const [supplier, setSupplier] = useState(null);
 
-  const [categories, setCategories] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-
-  const router = useRouter();
-
-  // Función para obtener la fecha actual en formato YYYY-MM-DD
   function getTodayDate() {
     const today = new Date();
     const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0"); // Los meses en JavaScript van de 0 a 11
+    const month = String(today.getMonth() + 1).padStart(2, "0");
     const day = String(today.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
 
-  // Funciones de Validación
   const isValidAmount = (amt) => {
     return /^\d+(\.\d{1,2})?$/.test(amt) && parseFloat(amt) > 0;
   };
@@ -51,75 +54,23 @@ export default function EditExpensePage() {
     return !isNaN(new Date(dateString).getTime());
   };
 
-  // Obtener el ID del gasto desde la URL
   useEffect(() => {
-    const fetchData = async () => {
-      const token = Cookies.get("access_token");
-      const urlParts = window.location.pathname.split("/");
-      const expenseId = urlParts[urlParts.length - 1]; // Asumiendo la ruta /dashboard/expenses/edit/[id]
+    if (expense) {
+      setAmount(expense.amount);
+      setDate(expense.date ? expense.date.split("T")[0] : getTodayDate());
+      setDescription(expense.description || "");
+      setCategory(expense.category_details?.id || null);
+      setSupplier(expense.supplier_details?.id || null);
+    }
+  }, [expense]);
 
-      if (!expenseId) {
-        setError("ID de gasto no proporcionado en la URL.");
-        setInitialLoading(false);
-        return;
-      }
-
-      try {
-        // Fetch del gasto a editar
-        const expenseResponse = await api.get(`/expenses/${expenseId}/`, {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-
-        const expense = expenseResponse.data;
-        setAmount(expense.amount);
-        setDate(expense.date.split("T")[0]); // Formatear fecha para el input
-        setDescription(expense.description || "");
-        setCategory(expense.category_details.id);
-        setSupplier(expense.supplier_details.id);
-      } catch (error) {
-        console.error("Error al cargar el gasto:", error);
-        setError("Error al cargar el gasto.");
-      }
-
-      try {
-        // Fetch de Categorías
-        const categoriesResponse = await api.get("/expense-categories/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCategories(categoriesResponse.data);
-      } catch (error) {
-        console.error("Error al cargar las categorías:", error);
-        setError("Error al cargar las categorías.");
-      }
-
-      try {
-        // Fetch de Proveedores
-        const suppliersResponse = await api.get("/suppliers/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setSuppliers(suppliersResponse.data);
-      } catch (error) {
-        console.error("Error al cargar los proveedores:", error);
-        setError("Error al cargar los proveedores.");
-      }
-
-      setInitialLoading(false);
-    };
-
-    fetchData();
-  }, []);
+  const isInitialLoading = loadingExpense || loadingCategories || loadingSuppliers;
+  const hasInitialError = errorExpense || errorCategories || errorSuppliers;
 
   const handleUpdateExpense = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    // Validaciones
     if (!amount || !date || !category || !supplier) {
       setError("Por favor, completa todos los campos requeridos.");
       setLoading(false);
@@ -138,26 +89,15 @@ export default function EditExpensePage() {
       return;
     }
 
-    // Obtener el ID del gasto desde la URL
-    const urlParts = window.location.pathname.split("/");
-    const expenseId = urlParts[urlParts.length - 1]; // Asumiendo la ruta /dashboard/expenses/edit/[id]
-
-    if (!expenseId) {
-      setError("ID de gasto no proporcionado en la URL.");
-      setLoading(false);
-      return;
-    }
-
-    // Preparar Datos para Enviar
     const expenseData = {
       amount: parseFloat(amount).toFixed(2),
-      date: new Date(date).toISOString(),
+      date: date,
       category: category,
       supplier: supplier,
     };
 
     if (description) {
-      expenseData.description = description;
+      expenseData.description = description.trim();
     }
 
     const token = Cookies.get("access_token");
@@ -168,12 +108,10 @@ export default function EditExpensePage() {
         },
       });
 
-      // Redireccionar tras la actualización exitosa
       router.push("/dashboard/expenses");
     } catch (error) {
       console.error("Error al actualizar gasto:", error);
       if (error.response && error.response.data) {
-        // Mostrar errores específicos de la API
         const apiErrors = Object.values(error.response.data).flat();
         setError(apiErrors.join(" "));
       } else {
@@ -182,9 +120,9 @@ export default function EditExpensePage() {
     } finally {
       setLoading(false);
     }
-  }, [amount, date, description, category, supplier, router]);
+  }, [amount, date, description, category, supplier, expenseId, router]);
 
-  if (initialLoading) {
+  if (isInitialLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Spinner size="lg" />
@@ -194,7 +132,7 @@ export default function EditExpensePage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-      {/* Encabezado */}
+      
       <div className="flex items-center mb-4 gap-1">
         <Link href="/dashboard/expenses">
           <Tooltip content="Volver" placement="bottom">
@@ -206,14 +144,18 @@ export default function EditExpensePage() {
         <p className="text-2xl font-bold">Modificar Gasto</p>
       </div>
 
-      {/* Mostrar Errores */}
+      {hasInitialError && (
+        <Code color="danger" className="text-wrap">
+          {errorExpense || errorCategories || errorSuppliers}
+        </Code>
+      )}
+
       {error && (
         <Code color="danger" className="text-wrap">
           {error}
         </Code>
       )}
 
-      {/* Formulario */}
       <div className="space-y-4 mt-4">
         {/* Monto */}
         <Input
@@ -307,7 +249,6 @@ export default function EditExpensePage() {
         </div>
       </div>
 
-      {/* Botón de Actualizar Gasto */}
       <div className="mt-6">
         <Button
           className="rounded-md bg-black text-white"

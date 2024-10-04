@@ -26,7 +26,6 @@ import {
 } from "@nextui-org/react";
 import {
   IconChevronDown,
-  IconCheck,
   IconCash,
   IconDownload,
   IconFilter
@@ -336,14 +335,6 @@ export default function CollectPage() {
                       aria-label="Filtro de Fecha Específica"
                       variant="underlined"
                       className="w-full"
-                      formatOptions={{
-                        year: 'numeric',
-                        month: 'numeric',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false, // Formato de 24 horas
-                      }}
                     />
                   </div>
                 </div>

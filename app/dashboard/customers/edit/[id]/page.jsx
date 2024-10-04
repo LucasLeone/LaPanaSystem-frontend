@@ -12,13 +12,14 @@ import {
 } from "@nextui-org/react";
 import { IconEdit, IconArrowLeft } from "@tabler/icons-react";
 import { useState, useEffect, useCallback } from "react";
-import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter, useParams } from "next/navigation";
+import useCustomer from "@/app/hooks/useCustomer";
+import api from "@/app/axios";
 
 export default function EditCustomerPage() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [loadingUpdate, setLoadingUpdate] = useState(false);
+  const [errorUpdate, setErrorUpdate] = useState(null);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -27,47 +28,27 @@ export default function EditCustomerPage() {
   const [customerType, setCustomerType] = useState("minorista");
 
   const router = useRouter();
-  const { id } = useParams(); // Obtener el ID del cliente desde la URL
+  const { id } = useParams();
 
-  // Función para obtener los detalles del cliente
+  const { customer, loading, error } = useCustomer(id);
+
   useEffect(() => {
-    const fetchCustomerDetails = async () => {
-      setLoading(true);
-      setError(null);
-      const token = Cookies.get("access_token");
-
-      try {
-        const response = await api.get(`/customers/${id}/`, {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-
-        const { name, email, phone_number, address, customer_type } = response.data;
-
-        setName(name);
-        setEmail(email);
-        setPhone(phone_number);
-        setAddress(address);
-        setCustomerType(customer_type);
-      } catch (error) {
-        console.error("Error al cargar los detalles del cliente:", error);
-        setError("Error al cargar los detalles del cliente.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCustomerDetails();
-  }, [id]);
+    if (customer) {
+      setName(customer.name || "");
+      setEmail(customer.email || "");
+      setPhone(customer.phone_number || "");
+      setAddress(customer.address || "");
+      setCustomerType(customer.customer_type || "minorista");
+    }
+  }, [customer]);
 
   const handleEditCustomer = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoadingUpdate(true);
+    setErrorUpdate(null);
 
     if (!name || !email || !phone || !address) {
-      setError("Todos los campos son requeridos.");
-      setLoading(false);
+      setErrorUpdate("Todos los campos son requeridos.");
+      setLoadingUpdate(false);
       return;
     }
 
@@ -90,11 +71,23 @@ export default function EditCustomerPage() {
       router.push('/dashboard/customers');
     } catch (error) {
       console.error("Error al actualizar cliente:", error);
-      setError("Error al actualizar el cliente.");
+      setErrorUpdate("Error al actualizar el cliente.");
     } finally {
-      setLoading(false);
+      setLoadingUpdate(false);
     }
   }, [name, email, phone, address, customerType, id, router]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <Code color='danger' className='text-wrap'>{error}</Code>;
+  }
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
@@ -108,7 +101,8 @@ export default function EditCustomerPage() {
         </Link>
         <p className="text-2xl font-bold">Editar Cliente - #{id}</p>
       </div>
-      {error && <Code color='danger' className='text-wrap'>{error}</Code>}
+      
+      {errorUpdate && <Code color='danger' className='text-wrap'>{errorUpdate}</Code>}
 
       <div className="space-y-4 mt-4">
         <Input
@@ -164,10 +158,10 @@ export default function EditCustomerPage() {
         <Button
           className="rounded-md bg-black text-white"
           onPress={handleEditCustomer}
-          isDisabled={loading}
+          isDisabled={loadingUpdate}
           fullWidth
         >
-          {loading ? <Spinner size="sm" /> : <><IconEdit className="h-4" /> Actualizar Cliente</>}
+          {loadingUpdate ? <Spinner size="sm" /> : <><IconEdit className="h-4" /> Actualizar Cliente</>}
         </Button>
       </div>
     </div>

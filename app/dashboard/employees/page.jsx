@@ -40,60 +40,44 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+import useUsers from "@/app/hooks/useUsers";
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState([]);
-  const rowsPerPage = 10; // Definido como constante
+  // Desestructurar correctamente el hook, incluyendo fetchUsers
+  const { users: employees, loading: usersLoading, error: usersError, fetchUsers } = useUsers();
+
+  const rowsPerPage = 10;
   const [page, setPage] = useState(1);
+
   const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false); // Estado para manejar la eliminación
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
+
   const [filterKey, setFilterKey] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [employeeToDelete, setEmployeeToDelete] = useState(null); // Empleado a eliminar
-  const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null }); // Añadido
+
+  const [employeeToDelete, setEmployeeToDelete] = useState(null);
+
+  const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
+
   const [user, setUser] = useState(null);
 
   const router = useRouter();
-  const { isOpen, onOpen, onClose } = useDisclosure(); // Control del modal
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
-  // Mapeo de traducción para user_type
   const USER_TYPE_LABELS = useMemo(() => ({
     SELLER: "Vendedor",
     DELIVERY: "Repartidor",
     ADMIN: "Administrador",
   }), []);
 
-  // Define los tipos de usuario para filtrado
   const filterItems = [
     { key: "seller", label: "Vendedor" },
     { key: "delivery", label: "Repartidor" },
     { key: "admin", label: "Administrador" },
-    // Agrega más tipos según tus necesidades
   ];
 
-  // Fetch de empleados
   useEffect(() => {
-    const fetchEmployees = async () => {
-      setLoading(true);
-      setError(null);
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/users/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setEmployees(response.data);
-      } catch (error) {
-        console.error(error);
-        setError("Error al cargar los empleados.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEmployees();
-
     const userData = Cookies.get("user");
     if (userData) {
       try {
@@ -105,7 +89,6 @@ export default function EmployeesPage() {
     }
   }, []);
 
-  // Manejo de acciones de filtro
   const handleFilterAction = useCallback((key) => {
     if (key === "none") {
       setFilterKey(null);
@@ -115,19 +98,17 @@ export default function EmployeesPage() {
     setPage(1);
   }, []);
 
-  // Manejo de cambio en la búsqueda (sin debounce)
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
     setPage(1);
   }, []);
 
-  // Función para abrir el modal y setear el empleado a eliminar
   const handleDeleteClick = useCallback((employee) => {
     setEmployeeToDelete(employee);
     onOpen();
   }, [onOpen]);
 
-  // Función para eliminar el empleado
+  // Utilizar fetchUsers en lugar de setEmployees
   const handleDeleteEmployee = useCallback(async () => {
     if (!employeeToDelete) return;
 
@@ -139,7 +120,7 @@ export default function EmployeesPage() {
           Authorization: `Token ${token}`,
         },
       });
-      setEmployees((prevEmployees) => prevEmployees.filter(e => e.id !== employeeToDelete.id));
+      fetchUsers(); // Refresca la lista de empleados
       onClose();
     } catch (error) {
       console.error("Error al eliminar empleado:", error);
@@ -147,9 +128,8 @@ export default function EmployeesPage() {
     } finally {
       setDeleting(false);
     }
-  }, [employeeToDelete, onClose]);
+  }, [employeeToDelete, onClose, fetchUsers]);
 
-  // Define las columnas de la tabla
   const columns = [
     { key: 'id', label: '#', sortable: true },
     { key: 'username', label: 'Usuario', sortable: true },
@@ -161,7 +141,6 @@ export default function EmployeesPage() {
     { key: 'actions', label: 'Acciones', sortable: false },
   ];
 
-  // Ordenamiento de los empleados según la columna seleccionada
   const sortedEmployees = useMemo(() => {
     if (!sortDescriptor.column) return [...employees];
     const sorted = [...employees].sort((a, b) => {
@@ -185,11 +164,9 @@ export default function EmployeesPage() {
     return sorted;
   }, [employees, sortDescriptor]);
 
-  // Filtrado y búsqueda
   const filteredEmployees = useMemo(() => {
     let filtered = [...sortedEmployees];
 
-    // Filtrar por tipo de usuario si se ha seleccionado un filtro
     if (filterKey) {
       const normalizedFilterKey = filterKey.toUpperCase().trim();
       filtered = filtered.filter(employee =>
@@ -198,7 +175,6 @@ export default function EmployeesPage() {
       );
     }
 
-    // Aplicar búsqueda sobre los datos filtrados
     if (searchQuery) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(employee =>
@@ -213,7 +189,6 @@ export default function EmployeesPage() {
     return filtered;
   }, [sortedEmployees, filterKey, searchQuery]);
 
-  // Mapeo de empleados a filas de la tabla
   const rows = useMemo(() => (
     filteredEmployees.map(employee => ({
       id: employee.id,
@@ -222,7 +197,7 @@ export default function EmployeesPage() {
       last_name: employee.last_name,
       email: employee.email,
       phone_number: employee.phone_number,
-      user_type: USER_TYPE_LABELS[employee.user_type] || 'N/A', // Traducción aplicada aquí
+      user_type: USER_TYPE_LABELS[employee.user_type] || 'N/A',
       actions: (
         <div className="flex gap-1">
           <Tooltip content="Editar">
@@ -232,9 +207,9 @@ export default function EmployeesPage() {
               isIconOnly
               color="warning"
               onPress={() => router.push(`/dashboard/employees/edit/${employee.username}`)}
-              aria-label={`Editar empleado ${employee.username}`} // Mejoras de accesibilidad
+              aria-label={`Editar empleado ${employee.username}`}
             >
-              <IconEdit className="h-8" />
+              <IconEdit className="h-5" />
             </Button>
           </Tooltip>
           <Tooltip content="Eliminar">
@@ -244,28 +219,26 @@ export default function EmployeesPage() {
               isIconOnly
               color="danger"
               onPress={() => handleDeleteClick(employee)}
-              aria-label={`Eliminar empleado ${employee.username}`} // Mejoras de accesibilidad
-              isDisabled={user.user_type != 'ADMIN'}
+              aria-label={`Eliminar empleado ${employee.username}`}
+              isDisabled={user?.user_type !== 'ADMIN'}
             >
-              <IconTrash className="h-8" />
+              <IconTrash className="h-5" />
             </Button>
           </Tooltip>
         </div>
       )
     }))
-  ), [filteredEmployees, USER_TYPE_LABELS, router, handleDeleteClick]);
+  ), [filteredEmployees, USER_TYPE_LABELS, router, handleDeleteClick, user]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
 
-  // Reseteo de página si excede el total de páginas
   useEffect(() => {
     if (page > totalPages && totalPages > 0) {
       setPage(1);
     }
   }, [totalPages, page]);
 
-  // Paginación
   const currentItems = useMemo(() => {
     const startIdx = (page - 1) * rowsPerPage;
     const endIdx = startIdx + rowsPerPage;
@@ -278,17 +251,14 @@ export default function EmployeesPage() {
     setPage(newPage);
   }, []);
 
-  // Función para manejar el cambio de ordenamiento
   const handleSortChange = useCallback((columnKey) => {
     setSortDescriptor(prev => {
       if (prev.column === columnKey) {
-        // Toggle direction
         return {
           column: columnKey,
           direction: prev.direction === "ascending" ? "descending" : "ascending"
         };
       } else {
-        // Nueva columna, por defecto ascendente
         return {
           column: columnKey,
           direction: "ascending"
@@ -297,7 +267,6 @@ export default function EmployeesPage() {
     });
   }, []);
 
-  // Función para renderizar los encabezados con ordenamiento
   const renderHeader = useCallback((column) => {
     const isSortable = column.sortable;
     const isSorted = sortDescriptor.column === column.key;
@@ -321,6 +290,7 @@ export default function EmployeesPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
+      
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Empleados</p>
@@ -382,13 +352,13 @@ export default function EmployeesPage() {
 
       {/* Tabla de Empleados */}
       <div className="overflow-x-auto border rounded-md">
-        {loading ? (
+        {usersLoading ? (
           <div className="flex justify-center items-center p-6">
             <Spinner size="lg" />
           </div>
-        ) : error ? (
+        ) : usersError ? (
           <div className="text-red-500 text-center p-6">
-            {error}
+            {usersError}
           </div>
         ) : currentItemsCount === 0 ? (
           <div className="text-center p-6">
@@ -433,7 +403,7 @@ export default function EmployeesPage() {
                     }
                     return (
                       <TableCell className="min-w-[80px] sm:min-w-[100px]">
-                        {getKeyValue(item, columnKey)}
+                        {item[columnKey]}
                       </TableCell>
                     );
                   }}
@@ -445,7 +415,7 @@ export default function EmployeesPage() {
       </div>
 
       {/* Paginación y Contador */}
-      {!loading && !error && currentItemsCount !== 0 && (
+      {!usersLoading && !usersError && currentItemsCount !== 0 && (
         <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
             Mostrando {currentItemsCount} de {totalItems} empleados
@@ -458,8 +428,6 @@ export default function EmployeesPage() {
             size="sm"
             showShadow={true}
             color="primary"
-            boundaryCount={1}
-            siblingCount={1}
           />
         </div>
       )}

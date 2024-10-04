@@ -32,112 +32,100 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+import useProductCategories from "@/app/hooks/useProductCategories";
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState([]);
-  const [rowsPerPage] = useState(10); // Definido como constante
+  const {
+    categories,
+    loading,
+    error,
+    fetchCategories,
+  } = useProductCategories();
+
+  const [rowsPerPage] = useState(10);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false); // Estado para manejar la eliminación
-  const [error, setError] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [errorState, setErrorState] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryToDelete, setCategoryToDelete] = useState(null); // Categoría a eliminar
-  const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null }); // Añadido
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
   const [user, setUser] = useState(null);
 
   const router = useRouter();
-  const { isOpen, onOpen, onClose } = useDisclosure(); // Control del modal
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
-  // Fetch de categorías
   useEffect(() => {
-    const fetchCategories = async () => {
-      setLoading(true);
-      setError(null);
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/product-categories/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCategories(response.data);
-      } catch (error) {
-        console.error("Error al cargar las categorías:", error);
-        setError("Error al cargar las categorías.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCategories();
-
     const userData = Cookies.get("user");
     if (userData) {
       try {
         setUser(JSON.parse(userData));
       } catch (error) {
-        console.error("Error parsing user data:", error);
+        console.error("Error al parsear los datos del usuario:", error);
         Cookies.remove("user");
       }
     }
   }, []);
 
-  // Manejo de cambio en la búsqueda (sin debounce)
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
     setPage(1);
   }, []);
 
-  // Función para abrir el modal y setear la categoría a eliminar
-  const handleDeleteClick = useCallback((category) => {
-    setCategoryToDelete(category);
-    onOpen();
-  }, [onOpen]);
+  const handleDeleteClick = useCallback(
+    (category) => {
+      setCategoryToDelete(category);
+      onOpen();
+    },
+    [onOpen]
+  );
 
-  // Función para eliminar la categoría
   const handleDeleteCategory = useCallback(async () => {
     if (!categoryToDelete) return;
 
     setDeleting(true);
     const token = Cookies.get("access_token");
+    if (!token) {
+      setErrorState("Token de acceso no encontrado.");
+      setDeleting(false);
+      onClose();
+      return;
+    }
     try {
-      // Asegúrate de que el endpoint de eliminación utiliza el ID de la categoría
       await api.delete(`/product-categories/${categoryToDelete.id}/`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
-      setCategories((prevCategories) => prevCategories.filter(c => c.id !== categoryToDelete.id));
+      await fetchCategories();
       onClose();
     } catch (error) {
       console.error("Error al eliminar la categoría:", error);
-      setError("Error al eliminar la categoría.");
+      setErrorState("Error al eliminar la categoría.");
     } finally {
       setDeleting(false);
     }
-  }, [categoryToDelete, onClose]);
+  }, [categoryToDelete, fetchCategories, onClose]);
 
-  const columns = [
-    { key: 'id', label: '#', sortable: true },
-    { key: 'name', label: 'Nombre', sortable: true },
-    { key: 'description', label: 'Descripción', sortable: false },
-    { key: 'actions', label: 'Acciones', sortable: false },
-  ];
+  const columns = useMemo(
+    () => [
+      { key: "id", label: "#", sortable: true },
+      { key: "name", label: "Nombre", sortable: true },
+      { key: "description", label: "Descripción", sortable: false },
+      { key: "actions", label: "Acciones", sortable: false },
+    ],
+    []
+  );
 
-  // Ordenamiento de las categorías según la columna seleccionada
   const sortedCategories = useMemo(() => {
     if (!sortDescriptor.column) return [...categories];
     const sorted = [...categories].sort((a, b) => {
-      let aValue, bValue;
-
-      aValue = a[sortDescriptor.column];
-      bValue = b[sortDescriptor.column];
-
+      let aValue = a[sortDescriptor.column];
+      let bValue = b[sortDescriptor.column];
       if (typeof aValue === "string") {
         return sortDescriptor.direction === "ascending"
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
-
       if (aValue < bValue) {
         return sortDescriptor.direction === "ascending" ? -1 : 1;
       }
@@ -149,23 +137,19 @@ export default function CategoriesPage() {
     return sorted;
   }, [categories, sortDescriptor]);
 
-  // Filtrado y búsqueda
   const filteredCategories = useMemo(() => {
     let filtered = [...sortedCategories];
-
-    // Aplicar búsqueda sobre los datos filtrados
     if (searchQuery) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(category =>
-        (category.name && category.name.toLowerCase().includes(query)) ||
-        (category.description && category.description.toLowerCase().includes(query))
+      filtered = filtered.filter(
+        (category) =>
+          (category.name && category.name.toLowerCase().includes(query)) ||
+          (category.description && category.description.toLowerCase().includes(query))
       );
     }
-
     return filtered;
   }, [sortedCategories, searchQuery]);
 
-  // Mapeo de categorías a filas de la tabla
   const rows = useMemo(() => (
     filteredCategories.map(category => ({
       id: category.id,
@@ -179,8 +163,10 @@ export default function CategoriesPage() {
               className="rounded-md"
               isIconOnly
               color="warning"
-              onPress={() => router.push(`/dashboard/products/categories/edit/${category.id}`)}
-              aria-label={`Editar categoría ${category.name}`} // Mejoras de accesibilidad
+              onPress={() =>
+                router.push(`/dashboard/products/categories/edit/${category.id}`)
+              }
+              aria-label={`Editar categoría ${category.name}`}
             >
               <IconEdit className="h-5" />
             </Button>
@@ -192,28 +178,26 @@ export default function CategoriesPage() {
               isIconOnly
               color="danger"
               onPress={() => handleDeleteClick(category)}
-              aria-label={`Eliminar categoría ${category.name}`} // Mejoras de accesibilidad
-              isDisabled={user.user_type != 'ADMIN'}
+              aria-label={`Eliminar categoría ${category.name}`}
+              isDisabled={user?.user_type !== "ADMIN"}
             >
               <IconTrash className="h-5" />
             </Button>
           </Tooltip>
         </div>
-      )
+      ),
     }))
-  ), [filteredCategories, handleDeleteClick, router]);
+  ), [filteredCategories, handleDeleteClick, router, user]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
 
-  // Reseteo de página si excede el total de páginas
   useEffect(() => {
     if (page > totalPages && totalPages > 0) {
       setPage(1);
     }
   }, [totalPages, page]);
 
-  // Paginación
   const currentItems = useMemo(() => {
     const startIdx = (page - 1) * rowsPerPage;
     const endIdx = startIdx + rowsPerPage;
@@ -226,50 +210,48 @@ export default function CategoriesPage() {
     setPage(newPage);
   }, []);
 
-  // Función para manejar el cambio de ordenamiento
   const handleSortChange = useCallback((columnKey) => {
-    setSortDescriptor(prev => {
+    setSortDescriptor((prev) => {
       if (prev.column === columnKey) {
-        // Toggle direction
         return {
           column: columnKey,
-          direction: prev.direction === "ascending" ? "descending" : "ascending"
+          direction: prev.direction === "ascending" ? "descending" : "ascending",
         };
       } else {
-        // Nueva columna, por defecto ascendente
         return {
           column: columnKey,
-          direction: "ascending"
+          direction: "ascending",
         };
       }
     });
   }, []);
 
-  // Función para renderizar los encabezados con ordenamiento
-  const renderHeader = useCallback((column) => {
-    const isSortable = column.sortable;
-    const isSorted = sortDescriptor.column === column.key;
-    const direction = isSorted ? sortDescriptor.direction : null;
-
-    return (
-      <div
-        className={`flex items-center ${isSortable ? "cursor-pointer" : ""}`}
-        onClick={() => isSortable && handleSortChange(column.key)}
-        aria-sort={isSorted ? direction : "none"}
-      >
-        <span>{column.label}</span>
-        {isSortable && (
-          direction === "ascending" ? <IconChevronUp className="ml-1 h-4 w-4" /> :
-            direction === "descending" ? <IconChevronDown className="ml-1 h-4 w-4" /> :
-              null
-        )}
-      </div>
-    );
-  }, [sortDescriptor, handleSortChange]);
+  const renderHeader = useCallback(
+    (column) => {
+      const isSortable = column.sortable;
+      const isSorted = sortDescriptor.column === column.key;
+      const direction = isSorted ? sortDescriptor.direction : null;
+      return (
+        <div
+          className={`flex items-center ${isSortable ? "cursor-pointer" : ""}`}
+          onClick={() => isSortable && handleSortChange(column.key)}
+          aria-sort={isSorted ? direction : "none"}
+        >
+          <span>{column.label}</span>
+          {isSortable &&
+            (direction === "ascending" ? (
+              <IconChevronUp className="ml-1 h-4 w-4" />
+            ) : direction === "descending" ? (
+              <IconChevronDown className="ml-1 h-4 w-4" />
+            ) : null)}
+        </div>
+      );
+    },
+    [sortDescriptor, handleSortChange]
+  );
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
-      {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Productos | Categorías</p>
         <div className="flex flex-wrap gap-2">
@@ -298,7 +280,6 @@ export default function CategoriesPage() {
         </div>
       </div>
 
-      {/* Barra de Búsqueda */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
         <Input
           placeholder="Buscar categorías"
@@ -312,15 +293,14 @@ export default function CategoriesPage() {
         />
       </div>
 
-      {/* Tabla de Categorías */}
       <div className="overflow-x-auto border rounded-md">
         {loading ? (
           <div className="flex justify-center items-center p-6">
             <Spinner size="lg" />
           </div>
-        ) : error ? (
+        ) : error || errorState ? (
           <div className="text-red-500 text-center p-6">
-            {error}
+            {error || errorState}
           </div>
         ) : currentItemsCount === 0 ? (
           <div className="text-center p-6">
@@ -376,8 +356,7 @@ export default function CategoriesPage() {
         )}
       </div>
 
-      {/* Paginación y Contador */}
-      {!loading && !error && currentItemsCount !== 0 && (
+      {!loading && !error && !errorState && currentItemsCount !== 0 && (
         <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
             Mostrando {currentItemsCount} de {totalItems} categorías
@@ -390,13 +369,10 @@ export default function CategoriesPage() {
             size="sm"
             showShadow={true}
             color="primary"
-            boundaryCount={1}
-            siblingCount={1}
           />
         </div>
       )}
 
-      {/* Modal de Confirmación de Eliminación */}
       <Modal isOpen={isOpen} onOpenChange={onClose} aria-labelledby="modal-title" placement="top-center">
         <ModalContent>
           {() => (
