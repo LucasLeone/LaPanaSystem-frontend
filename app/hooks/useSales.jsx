@@ -55,6 +55,10 @@ const useSales = (filters = {}) => {
       queryParams.append('customer', filters.customer);
     }
 
+    if (filters.user) {
+      queryParams.append('user', filters.user);
+    }
+
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
 
     try {

@@ -44,8 +44,9 @@ import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { capitalize } from "@/app/utils";
 import useSales from "@/app/hooks/useSales";
+import useCustomers from "@/app/hooks/useCustomers";
+import useUsers from "@/app/hooks/useUsers";
 
-// Definir las opciones estáticas para filtros
 const STATE_CHOICES = [
   { id: "creada", name: "Creada" },
   { id: "pendiente_entrega", name: "Pendiente de Entrega" },
@@ -70,20 +71,21 @@ const PAYMENT_METHOD_CHOICES = [
 export default function SalesPage() {
   const router = useRouter();
 
-  // Estados para los filtros temporales en el modal
   const [tempFilterState, setTempFilterState] = useState(null);
   const [tempFilterSaleType, setTempFilterSaleType] = useState(null);
   const [tempFilterPaymentMethod, setTempFilterPaymentMethod] = useState(null);
   const [tempFilterCustomer, setTempFilterCustomer] = useState(null);
+  const [tempFilterUser, setTempFilterUser] = useState(null);
   const [tempFilterMinTotal, setTempFilterMinTotal] = useState("");
   const [tempFilterMaxTotal, setTempFilterMaxTotal] = useState("");
   const [tempFilterDate, setTempFilterDate] = useState(null);
   const [tempFilterDateRange, setTempFilterDateRange] = useState(null);
 
-  // Estados para los filtros aplicados
   const [filters, setFilters] = useState({});
 
   const { sales, loading: salesLoading, error: salesError } = useSales(filters);
+  const { customers, loading: customersLoading, error: customersError} = useCustomers();
+  const { users, loading: usersLoading, error: usersError } = useUsers();
 
   const rowsPerPage = 10;
   const [page, setPage] = useState(1);
@@ -101,45 +103,6 @@ export default function SalesPage() {
   const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
   const { isOpen: isFilterModalOpen, onOpen: onFilterModalOpen, onClose: onFilterModalClose } = useDisclosure();
 
-  // Fetch Customers for the Autocomplete in Filters Modal
-  const [customers, setCustomers] = useState([]);
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/customers/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setCustomers(response.data);
-      } catch (error) {
-        console.error("Error al cargar los clientes:", error);
-      }
-    };
-    fetchCustomers();
-  }, []);
-
-  // Fetch Users for the Autocomplete in Filters Modal (si es necesario)
-  const [users, setUsers] = useState([]);
-  useEffect(() => {
-    const fetchUsers = async () => {
-      const token = Cookies.get("access_token");
-      try {
-        const response = await api.get("/users/", {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        });
-        setUsers(response.data);
-      } catch (error) {
-        console.error("Error al cargar los usuarios:", error);
-      }
-    };
-    fetchUsers();
-  }, []);
-
-  // Aplicar filtros desde el modal
   const applyFilters = () => {
     const newFilters = {};
 
@@ -154,6 +117,9 @@ export default function SalesPage() {
     }
     if (tempFilterCustomer) {
       newFilters.customer = tempFilterCustomer;
+    }
+    if (tempFilterUser) {
+      newFilters.user = tempFilterUser;
     }
     if (tempFilterMinTotal !== "") {
       newFilters.min_total = tempFilterMinTotal;
@@ -174,7 +140,6 @@ export default function SalesPage() {
     onFilterModalClose();
   };
 
-  // Limpiar filtros temporales en el modal
   const clearFilters = () => {
     setTempFilterState(null);
     setTempFilterSaleType(null);
@@ -186,13 +151,11 @@ export default function SalesPage() {
     setTempFilterDateRange(null);
   };
 
-  // Manejar cambios en la búsqueda
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
     setPage(1);
   }, []);
 
-  // Manejar eliminación de una venta
   const handleDeleteClick = useCallback((sale) => {
     setSaleToDelete(sale);
     onOpen();
@@ -208,22 +171,25 @@ export default function SalesPage() {
           Authorization: `Token ${token}`,
         },
       });
-      // Refrescar los datos llamando a fetchSales si está disponible
-      // Si usas el hook, normalmente se re-fetch automáticamente al cambiar los filtros
       onClose();
     } catch (error) {
       console.error("Error al eliminar la venta:", error);
-      // Puedes manejar el error aquí
     }
   }, [saleToDelete, onClose]);
 
-  // Manejar ver detalles de una venta
   const handleViewClick = useCallback((sale) => {
     setSaleToView(sale);
     onViewOpen();
   }, [onViewOpen]);
 
-  // Definir las columnas de la tabla
+  const handleEditClick = useCallback((sale) => {
+    if (sale.sale_details && Array.isArray(sale.sale_details) && sale.sale_details.length > 0) {
+      router.push(`/dashboard/sales/edit-with-details/${sale.id}`);
+    } else {
+      router.push(`/dashboard/sales/edit-without-details/${sale.id}`);
+    }
+  }, [router]);
+
   const columns = [
     { key: 'id', label: '#', sortable: true },
     { key: 'date', label: 'Fecha', sortable: true },
@@ -237,7 +203,6 @@ export default function SalesPage() {
     { key: 'actions', label: 'Acciones', sortable: false },
   ];
 
-  // Ordenar las ventas
   const sortedSales = useMemo(() => {
     if (!sortDescriptor.column) return [...sales];
     try {
@@ -300,7 +265,6 @@ export default function SalesPage() {
     }
   }, [sales, sortDescriptor]);
 
-  // Filtrar las ventas por la búsqueda
   const filteredSales = useMemo(() => {
     if (!searchQuery) return sortedSales;
     const lowerSearch = searchQuery.toLowerCase();
@@ -313,7 +277,6 @@ export default function SalesPage() {
     );
   }, [sortedSales, searchQuery]);
 
-  // Crear las filas para la tabla
   const rows = useMemo(() => (
     filteredSales.map(sale => ({
       id: sale.id,
@@ -373,7 +336,7 @@ export default function SalesPage() {
         </div>
       )
     }))
-  ), [filteredSales, handleDeleteClick, handleViewClick]);
+  ), [filteredSales, handleDeleteClick, handleEditClick, handleViewClick]);
 
   const totalItems = rows.length;
   const totalPages = Math.ceil(totalItems / rowsPerPage);
@@ -433,15 +396,6 @@ export default function SalesPage() {
       </div>
     );
   }, [sortDescriptor, handleSortChange]);
-
-  // Manejar edición de una venta
-  const handleEditClick = useCallback((sale) => {
-    if (sale.sale_details && Array.isArray(sale.sale_details) && sale.sale_details.length > 0) {
-      router.push(`/dashboard/sales/edit-with-details/${sale.id}`);
-    } else {
-      router.push(`/dashboard/sales/edit-without-details/${sale.id}`);
-    }
-  }, [router]);
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
@@ -685,6 +639,29 @@ export default function SalesPage() {
                           value={customer.id.toString()}
                         >
                           {customer.name}
+                        </AutocompleteItem>
+                      ))}
+                    </Autocomplete>
+                  </div>
+
+                  <div>
+                    <Autocomplete
+                      label="Buscar y seleccionar usuario"
+                      placeholder="Selecciona un usuario"
+                      className="w-full"
+                      aria-label="Filtro de Usuario"
+                      onClear={() => setTempFilterUser(null)}
+                      onSelectionChange={(value) => setTempFilterUser(value)}
+                      selectedKey={tempFilterUser}
+                      variant="underlined"
+                      isClearable
+                    >
+                      {users.map((user) => (
+                        <AutocompleteItem
+                          key={user.id.toString()}
+                          value={user.id.toString()}
+                        >
+                          {user.first_name + " " + user.last_name}
                         </AutocompleteItem>
                       ))}
                     </Autocomplete>
