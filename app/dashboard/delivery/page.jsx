@@ -63,7 +63,8 @@ export default function PendingDeliveriesPage() {
 
   const salesFilters = useMemo(() => {
     const filters = {
-      needs_delivery: true
+      needs_delivery: true,
+      state: 'pendiente_entrega'
     };
 
     if (filterDate) {
