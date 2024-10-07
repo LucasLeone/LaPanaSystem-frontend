@@ -83,7 +83,7 @@ export default function SalesPage() {
 
   const [filters, setFilters] = useState({});
 
-  const { sales, loading: salesLoading, error: salesError } = useSales(filters);
+  const { sales, loading: salesLoading, error: salesError, fetchSales } = useSales(filters);
   const { customers, loading: customersLoading, error: customersError} = useCustomers();
   const { users, loading: usersLoading, error: usersError } = useUsers();
 
@@ -171,11 +171,12 @@ export default function SalesPage() {
           Authorization: `Token ${token}`,
         },
       });
+      fetchSales(filters);
       onClose();
     } catch (error) {
       console.error("Error al eliminar la venta:", error);
     }
-  }, [saleToDelete, onClose]);
+  }, [saleToDelete, fetchSales, filters, onClose]);
 
   const handleViewClick = useCallback((sale) => {
     setSaleToView(sale);

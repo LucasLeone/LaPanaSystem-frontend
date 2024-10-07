@@ -56,8 +56,8 @@ export default function CreateSalePage() {
     setLoading(true);
     setError(null);
 
-    if (!customer || !total) {
-      setError("Por favor, completa todos los campos requeridos.");
+    if (!total) {
+      setError("El total es requerido.");
       setLoading(false);
       return;
     }
@@ -69,9 +69,12 @@ export default function CreateSalePage() {
     }
 
     const saleData = {
-      customer: customer,
       total: parseFloat(total),
     };
+
+    if (customer) {
+      saleData.customer = customer;
+    }
 
     if (date) {
       saleData.date = date;
@@ -124,7 +127,6 @@ export default function CreateSalePage() {
           placeholder="Seleccione un cliente"
           onSelectionChange={(value) => setCustomer(value)}
           variant="underlined"
-          isRequired
         >
           {customers.map((cust) => (
             <AutocompleteItem key={cust.id.toString()} value={cust.id.toString()}>

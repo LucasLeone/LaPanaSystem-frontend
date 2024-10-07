@@ -69,8 +69,8 @@ export default function EditSaleWithoutDetailsPage() {
     setLoading(true);
     setError(null);
 
-    if (!customer || !total) {
-      setError("Por favor, completa todos los campos requeridos.");
+    if (!total) {
+      setError("El total es requerido.");
       setLoading(false);
       return;
     }
@@ -82,7 +82,7 @@ export default function EditSaleWithoutDetailsPage() {
     }
 
     const saleData = {
-      customer: parseInt(customer),
+      customer: customer ? parseInt(customer) : null,
       total: parseFloat(total),
     };
 
@@ -150,7 +150,6 @@ export default function EditSaleWithoutDetailsPage() {
             onSelectionChange={(value) => setCustomer(value)}
             selectedKey={customer ? customer.toString() : null}
             variant="underlined"
-            isRequired
             value={customer ? customer.toString() : ""}
           >
             {customers.map((cust) => (
