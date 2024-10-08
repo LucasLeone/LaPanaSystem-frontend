@@ -5,7 +5,7 @@ import {
   Input,
   Button
 } from "@nextui-org/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { EyeIcon, EyeSlashIcon, UserIcon, KeyIcon } from "@heroicons/react/24/solid";
 import Cookies from "js-cookie";
@@ -20,6 +20,11 @@ export default function LoginPage() {
 
   const toggleVisibility = () => setIsVisible(!isVisible);
 
+  useEffect(() => {
+    Cookies.remove("user");
+    Cookies.remove("access_token");
+  }, []);
+  
   const handleLogin = async () => {
     if (!username || !password) {
       setError("Por favor, complete todos los campos.");
