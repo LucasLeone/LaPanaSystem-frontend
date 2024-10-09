@@ -10,6 +10,8 @@ import {
   Link,
   Tooltip,
   Textarea,
+  AutocompleteItem,
+  Autocomplete,
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft } from "@tabler/icons-react";
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -189,11 +191,11 @@ export default function CreateExpensePage() {
 
           <div className="flex flex-col md:flex-row md:gap-4">
             <div className="flex-1 space-y-2">
-              <Select
+              <Autocomplete
                 aria-label="Categoría del Gasto"
                 label="Categoría"
                 placeholder="Seleccione una categoría"
-                selectedKeys={category ? [category.toString()] : []}
+                selectedKey={category ? category.toString() : []}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0];
                   setCategory(selected ? parseInt(selected, 10) : null);
@@ -202,19 +204,19 @@ export default function CreateExpensePage() {
                 isRequired
               >
                 {categories.map((cat) => (
-                  <SelectItem key={cat.id.toString()} value={cat.id.toString()}>
+                  <AutocompleteItem key={cat.id.toString()} value={cat.id.toString()}>
                     {cat.name}
-                  </SelectItem>
+                  </AutocompleteItem>
                 ))}
-              </Select>
+              </Autocomplete>
             </div>
 
             <div className="flex-1 space-y-2">
-              <Select
+              <Autocomplete
                 aria-label="Proveedor del Gasto"
                 label="Proveedor"
                 placeholder="Seleccione un proveedor"
-                selectedKeys={supplier ? [supplier.toString()] : []}
+                selectedKey={supplier ? supplier.toString() : []}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0];
                   setSupplier(selected ? parseInt(selected, 10) : null);
@@ -223,11 +225,11 @@ export default function CreateExpensePage() {
                 isRequired
               >
                 {suppliers.map((sup) => (
-                  <SelectItem key={sup.id.toString()} value={sup.id.toString()}>
+                  <AutocompleteItem key={sup.id.toString()} value={sup.id.toString()}>
                     {sup.name}
-                  </SelectItem>
+                  </AutocompleteItem>
                 ))}
-              </Select>
+              </Autocomplete>
             </div>
           </div>
         </div>
