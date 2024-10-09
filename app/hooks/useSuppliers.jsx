@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../axios';
 import Cookies from 'js-cookie';
 
-const useSuppliers = () => {
+const useSuppliers = (offset = 0, limit = 100000) => {
   const [suppliers, setSuppliers] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchSuppliers = async () => {
+  const fetchSuppliers = useCallback(async (offset, limit) => {
     setLoading(true);
     setError(null);
 
@@ -16,23 +17,27 @@ const useSuppliers = () => {
       const response = await api.get('/suppliers/', {
         headers: {
           Authorization: `Token ${token}`,
-        }
+        },
+        params: {
+          offset: offset,
+          limit: limit,
+        },
       });
-      setSuppliers(response.data);
+      setSuppliers(response.data.results);
+      setTotalCount(response.data.count);
     } catch (err) {
       console.error(err);
       setError('Error al cargar los proveedores.');
     } finally {
       setLoading(false);
     }
-  };
-
-
-  useEffect(() => {
-    fetchSuppliers();
   }, []);
 
-  return { suppliers, loading, error, fetchSuppliers };
+  useEffect(() => {
+    fetchSuppliers(offset, limit);
+  }, [offset, limit, fetchSuppliers]);
+
+  return { suppliers, totalCount, loading, error, fetchSuppliers };
 };
 
 export default useSuppliers;

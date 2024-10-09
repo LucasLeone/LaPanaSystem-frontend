@@ -24,7 +24,7 @@ import {
   DatePicker,
   DateRangePicker,
   Accordion,
-  AccordionItem
+  AccordionItem,
 } from "@nextui-org/react";
 import {
   IconDownload,
@@ -34,9 +34,9 @@ import {
   IconTrash,
   IconChevronUp,
   IconChevronDown,
-  IconEdit
+  IconEdit,
 } from "@tabler/icons-react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
@@ -45,18 +45,7 @@ import useCustomers from "@/app/hooks/useCustomers";
 import useUsers from "@/app/hooks/useUsers";
 
 export default function ReturnsPage() {
-  const rowsPerPage = 10;
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState(null);
-
-  const [filterUser, setFilterUser] = useState(null);
-  const [filterCustomer, setFilterCustomer] = useState(null);
-  const [filterMinTotal, setFilterMinTotal] = useState("");
-  const [filterMaxTotal, setFilterMaxTotal] = useState("");
-  const [filterDate, setFilterDate] = useState(null);
-  const [filterDateRange, setFilterDateRange] = useState(null);
+  const router = useRouter();
 
   const [tempFilterUser, setTempFilterUser] = useState(null);
   const [tempFilterCustomer, setTempFilterCustomer] = useState(null);
@@ -65,25 +54,19 @@ export default function ReturnsPage() {
   const [tempFilterDate, setTempFilterDate] = useState(null);
   const [tempFilterDateRange, setTempFilterDateRange] = useState(null);
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState({});
 
-  const [returnToDelete, setReturnToDelete] = useState(null);
-  const [returnToView, setReturnToView] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [sortDescriptor, setSortDescriptor] = useState({
     column: null,
     direction: null,
   });
 
-  const { returns, loading: returnsLoading, error: returnsError, fetchReturns } = useReturns(
-    filterUser,
-    filterCustomer,
-    filterMinTotal,
-    filterMaxTotal,
-    filterDate,
-    filterDateRange,
-  );
-  const { customers, loading: customersLoading, error: customersError } = useCustomers();
-  const { users, loading: usersLoading, error: usersError } = useUsers();
+  const rowsPerPage = 10;
+  const [page, setPage] = useState(1);
+
+  const [returnToDelete, setReturnToDelete] = useState(null);
+  const [returnToView, setReturnToView] = useState(null);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
@@ -97,26 +80,89 @@ export default function ReturnsPage() {
     onClose: onFilterModalClose,
   } = useDisclosure();
 
-  const router = useRouter();
+  const { customers, loading: customersLoading, error: customersError } = useCustomers();
+  const { users, loading: usersLoading, error: usersError } = useUsers();
 
-  useEffect(() => {
-    if (isFilterModalOpen) {
-      setTempFilterUser(filterUser);
-      setTempFilterCustomer(filterCustomer);
-      setTempFilterMinTotal(filterMinTotal);
-      setTempFilterMaxTotal(filterMaxTotal);
-      setTempFilterDate(filterDate);
-      setTempFilterDateRange(filterDateRange);
+  const appliedFilters = useMemo(() => {
+    const newFilters = { ...filters };
+
+    if (searchQuery) {
+      newFilters.search = searchQuery;
     }
-  }, [
-    isFilterModalOpen,
-    filterUser,
-    filterCustomer,
-    filterMinTotal,
-    filterMaxTotal,
-    filterDate,
-    filterDateRange,
-  ]);
+
+    if (sortDescriptor.column) {
+      const columnKeyToField = {
+        id: "id",
+        date: "date",
+        customer: "customer__name",
+        user: "user__username",
+        total: "total",
+      };
+      const backendField =
+        columnKeyToField[sortDescriptor.column] || sortDescriptor.column;
+      newFilters.ordering =
+        sortDescriptor.direction === "ascending"
+          ? backendField
+          : `-${backendField}`;
+    }
+
+    return newFilters;
+  }, [filters, searchQuery, sortDescriptor]);
+
+  // Uso del hook useReturns con los filtros aplicados y la paginación
+  const {
+    returns,
+    totalCount,
+    loading: returnsLoading,
+    error: returnsError,
+    fetchReturns,
+  } = useReturns(appliedFilters, (page - 1) * rowsPerPage, rowsPerPage);
+
+  // Función para aplicar los filtros
+  const applyFilters = () => {
+    const newFilters = {};
+
+    if (tempFilterUser) {
+      newFilters.user = tempFilterUser;
+    }
+    if (tempFilterCustomer) {
+      newFilters.customer = tempFilterCustomer;
+    }
+    if (tempFilterMinTotal !== "") {
+      newFilters.min_total = tempFilterMinTotal;
+    }
+    if (tempFilterMaxTotal !== "") {
+      newFilters.max_total = tempFilterMaxTotal;
+    }
+    if (tempFilterDate) {
+      newFilters.date = new Date(tempFilterDate).toISOString().split("T")[0];
+    }
+    if (tempFilterDateRange) {
+      newFilters.start_date = new Date(tempFilterDateRange.start)
+        .toISOString()
+        .split("T")[0];
+      newFilters.end_date = new Date(tempFilterDateRange.end).toISOString().split("T")[0];
+    }
+
+    setFilters(newFilters);
+    setPage(1);
+    onFilterModalClose();
+  };
+
+  const clearFilters = () => {
+    setTempFilterUser(null);
+    setTempFilterCustomer(null);
+    setTempFilterMinTotal("");
+    setTempFilterMaxTotal("");
+    setTempFilterDate(null);
+    setTempFilterDateRange(null);
+    setSearchQuery("");
+    setSortDescriptor({
+      column: null,
+      direction: null,
+    });
+    setFilters({});
+  };
 
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
@@ -134,7 +180,6 @@ export default function ReturnsPage() {
   const handleDeleteReturn = useCallback(async () => {
     if (!returnToDelete) return;
 
-    setDeleting(true);
     const token = Cookies.get("access_token");
     try {
       await api.delete(`/returns/${returnToDelete.id}/`, {
@@ -142,15 +187,13 @@ export default function ReturnsPage() {
           Authorization: `Token ${token}`,
         },
       });
-      fetchReturns();
+      fetchReturns(appliedFilters, (page - 1) * rowsPerPage, rowsPerPage);
       onClose();
     } catch (error) {
       console.error("Error al eliminar la devolución:", error);
-      setError("Error al eliminar la devolución.");
-    } finally {
-      setDeleting(false);
+      // Puedes manejar el error de manera más específica aquí
     }
-  }, [returnToDelete, onClose]);
+  }, [returnToDelete, fetchReturns, appliedFilters, onClose, page, rowsPerPage]);
 
   const handleViewClick = useCallback(
     (returnItem) => {
@@ -169,87 +212,20 @@ export default function ReturnsPage() {
     { key: "actions", label: "Acciones", sortable: false },
   ];
 
-  const sortedReturns = useMemo(() => {
-    if (!sortDescriptor.column) return [...returns];
-    try {
-      const sorted = [...returns].sort((a, b) => {
-        let aValue, bValue;
-
-        switch (sortDescriptor.column) {
-          case "customer":
-            aValue = a.customer_details?.name || "";
-            bValue = b.customer_details?.name || "";
-            break;
-          case "total":
-            aValue = a.total != null ? parseFloat(a.total) : 0;
-            bValue = b.total != null ? parseFloat(b.total) : 0;
-            break;
-          case "date":
-            aValue = new Date(a.date);
-            bValue = new Date(b.date);
-            break;
-          default:
-            aValue =
-              a[sortDescriptor.column] != null ? a[sortDescriptor.column] : "";
-            bValue =
-              b[sortDescriptor.column] != null ? b[sortDescriptor.column] : "";
-        }
-
-        const aType = typeof aValue;
-        const bType = typeof bValue;
-
-        if (aType === "string" && bType === "string") {
-          return sortDescriptor.direction === "ascending"
-            ? aValue.localeCompare(bValue)
-            : bValue.localeCompare(aValue);
-        }
-
-        if (aType === "number" && bType === "number") {
-          return sortDescriptor.direction === "ascending"
-            ? aValue - bValue
-            : bValue - aValue;
-        }
-
-        if (aValue instanceof Date && bValue instanceof Date) {
-          return sortDescriptor.direction === "ascending"
-            ? aValue - bValue
-            : bValue - aValue;
-        }
-
-        const aStr = String(aValue);
-        const bStr = String(bValue);
-        return sortDescriptor.direction === "ascending"
-          ? aStr.localeCompare(bStr)
-          : bStr.localeCompare(aStr);
-      });
-      return sorted;
-    } catch (error) {
-      console.error("Error al ordenar las devoluciones:", error);
-      return [...returns];
-    }
-  }, [returns, sortDescriptor]);
-
-  // Filtrar los returns por searchQuery en el frontend
-  const filteredReturns = useMemo(() => {
-    if (!searchQuery) return sortedReturns;
-    const lowerSearch = searchQuery.toLowerCase();
-    return sortedReturns.filter(
-      (r) =>
-        r.customer_details?.name.toLowerCase().includes(lowerSearch) ||
-        String(r.id).includes(lowerSearch)
-    );
-  }, [sortedReturns, searchQuery]);
-
   const rows = useMemo(
     () =>
-      filteredReturns.map((returnItem) => ({
+      returns.map((returnItem) => ({
         id: returnItem.id,
         date: new Date(returnItem.date).toLocaleDateString("es-AR", {
           year: "numeric",
           month: "short",
           day: "numeric",
         }),
-        user: returnItem.user_details?.first_name + " " + returnItem.user_details?.last_name || "",
+        user:
+          returnItem.user_details?.first_name +
+          " " +
+          returnItem.user_details?.last_name ||
+          "",
         customer: returnItem.customer_details?.name || "",
         total: `${parseFloat(returnItem.total).toLocaleString("es-AR", {
           style: "currency",
@@ -275,8 +251,10 @@ export default function ReturnsPage() {
                 className="rounded-md"
                 isIconOnly
                 color="warning"
-                onPress={() => router.push(`/dashboard/returns/edit/${returnItem.id}`)}
-                aria-label={`Editar gasto ${returnItem.id}`}
+                onPress={() =>
+                  router.push(`/dashboard/returns/edit/${returnItem.id}`)
+                }
+                aria-label={`Editar devolución ${returnItem.id}`}
               >
                 <IconEdit className="h-5" />
               </Button>
@@ -296,25 +274,10 @@ export default function ReturnsPage() {
           </div>
         ),
       })),
-    [filteredReturns, handleDeleteClick, handleViewClick, router]
+    [returns, handleDeleteClick, handleViewClick, router]
   );
 
-  const totalItems = rows.length;
-  const totalPages = Math.ceil(totalItems / rowsPerPage);
-
-  useEffect(() => {
-    if (page > totalPages && totalPages > 0) {
-      setPage(1);
-    }
-  }, [totalPages, page]);
-
-  const currentItems = useMemo(() => {
-    const startIdx = (page - 1) * rowsPerPage;
-    const endIdx = startIdx + rowsPerPage;
-    return rows.slice(startIdx, endIdx);
-  }, [rows, page, rowsPerPage]);
-
-  const currentItemsCount = currentItems.length;
+  const totalPages = Math.ceil(totalCount / rowsPerPage);
 
   const handlePageChangeFunc = useCallback((newPage) => {
     setPage(newPage);
@@ -325,7 +288,8 @@ export default function ReturnsPage() {
       if (prev.column === columnKey) {
         return {
           column: columnKey,
-          direction: prev.direction === "ascending" ? "descending" : "ascending",
+          direction:
+            prev.direction === "ascending" ? "descending" : "ascending",
         };
       } else {
         return {
@@ -344,7 +308,9 @@ export default function ReturnsPage() {
 
       return (
         <div
-          className={`flex items-center ${isSortable ? "cursor-pointer" : ""}`}
+          className={`flex items-center ${
+            isSortable ? "cursor-pointer" : ""
+          }`}
           onClick={() => isSortable && handleSortChange(column.key)}
           aria-sort={isSorted ? direction : "none"}
         >
@@ -360,28 +326,6 @@ export default function ReturnsPage() {
     },
     [sortDescriptor, handleSortChange]
   );
-
-  // Función para aplicar filtros desde el modal
-  const applyFilters = () => {
-    setFilterUser(tempFilterUser);
-    setFilterCustomer(tempFilterCustomer);
-    setFilterMinTotal(tempFilterMinTotal);
-    setFilterMaxTotal(tempFilterMaxTotal);
-    setFilterDate(tempFilterDate);
-    setFilterDateRange(tempFilterDateRange);
-    setPage(1);
-    onFilterModalClose();
-  };
-
-  // Función para limpiar filtros temporales en el modal
-  const clearFilters = () => {
-    setTempFilterUser(null);
-    setTempFilterCustomer(null);
-    setTempFilterMinTotal("");
-    setTempFilterMaxTotal("");
-    setTempFilterDate(null);
-    setTempFilterDateRange(null);
-  };
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
@@ -435,13 +379,13 @@ export default function ReturnsPage() {
 
       {/* Tabla de Devoluciones */}
       <div className="overflow-x-auto border rounded-md">
-        {loading ? (
+        {returnsLoading ? (
           <div className="flex justify-center items-center p-6">
             <Spinner size="lg" />
           </div>
-        ) : error ? (
-          <div className="text-red-500 text-center p-6">{error}</div>
-        ) : currentItemsCount === 0 ? (
+        ) : returnsError ? (
+          <div className="text-red-500 text-center p-6">{returnsError}</div>
+        ) : rows.length === 0 ? (
           <div className="text-center p-6">No hay devoluciones para mostrar.</div>
         ) : (
           <Table
@@ -463,7 +407,7 @@ export default function ReturnsPage() {
               )}
             </TableHeader>
             <TableBody>
-              {currentItems.map((item) => (
+              {rows.map((item) => (
                 <TableRow key={item.id}>
                   {columns.map((column) => {
                     if (column.key === "id") {
@@ -473,7 +417,10 @@ export default function ReturnsPage() {
                       return <TableCell key={column.key}>{item.actions}</TableCell>;
                     }
                     return (
-                      <TableCell key={column.key} className="min-w-[80px] sm:min-w-[100px]">
+                      <TableCell
+                        key={column.key}
+                        className="min-w-[80px] sm:min-w-[100px]"
+                      >
                         {item[column.key]}
                       </TableCell>
                     );
@@ -486,10 +433,10 @@ export default function ReturnsPage() {
       </div>
 
       {/* Paginación */}
-      {!loading && !error && currentItemsCount !== 0 && (
+      {!returnsLoading && !returnsError && rows.length !== 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between mt-4">
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
-            Mostrando {currentItemsCount} de {totalItems} devoluciones
+            Mostrando {returns.length} de {totalCount} devoluciones
           </p>
           <Pagination
             total={totalPages}
@@ -580,6 +527,13 @@ export default function ReturnsPage() {
                         aria-label="Filtro de Total Mínimo"
                         variant="underlined"
                         isClearable
+                        startContent={
+                          <div className="pointer-events-none flex items-center">
+                            <span className="text-default-400 text-small">
+                              $
+                            </span>
+                          </div>
+                        }
                       />
                     </div>
                     <div className="w-full">
@@ -593,6 +547,13 @@ export default function ReturnsPage() {
                         aria-label="Filtro de Total Máximo"
                         variant="underlined"
                         isClearable
+                        startContent={
+                          <div className="pointer-events-none flex items-center">
+                            <span className="text-default-400 text-small">
+                              $
+                            </span>
+                          </div>
+                        }
                       />
                     </div>
                   </div>
@@ -612,7 +573,7 @@ export default function ReturnsPage() {
                   {/* Filtro de Rango de Fechas */}
                   <div>
                     <DateRangePicker
-                      label="Seleccionar Rango"
+                      label="Seleccionar Rango de Fechas"
                       value={tempFilterDateRange}
                       onChange={setTempFilterDateRange}
                       placeholder="Selecciona un rango de fechas"
@@ -660,16 +621,16 @@ export default function ReturnsPage() {
                   color="danger"
                   variant="light"
                   onPress={onClose}
-                  disabled={deleting}
+                  disabled={false}
                 >
                   Cancelar
                 </Button>
                 <Button
                   color="primary"
                   onPress={handleDeleteReturn}
-                  disabled={deleting}
+                  disabled={false}
                 >
-                  {deleting ? <Spinner size="sm" /> : "Eliminar"}
+                  Eliminar
                 </Button>
               </ModalFooter>
             </>
@@ -708,10 +669,13 @@ export default function ReturnsPage() {
                     </p>
                     <p>
                       <strong>Total:</strong>{" "}
-                      {`${parseFloat(returnToView?.total).toLocaleString("es-AR", {
-                        style: "currency",
-                        currency: "ARS",
-                      })}`}
+                      {`${parseFloat(returnToView?.total).toLocaleString(
+                        "es-AR",
+                        {
+                          style: "currency",
+                          currency: "ARS",
+                        }
+                      )}`}
                     </p>
                   </AccordionItem>
                   <AccordionItem
@@ -721,7 +685,7 @@ export default function ReturnsPage() {
                   >
                     <div className="overflow-x-auto max-h-60 border rounded-md">
                       {returnToView?.return_details &&
-                        returnToView.return_details.length > 0 ? (
+                      returnToView.return_details.length > 0 ? (
                         <Table
                           aria-label="Items de la Devolución"
                           className="border-none min-w-full"
@@ -746,7 +710,9 @@ export default function ReturnsPage() {
                           <TableBody>
                             {returnToView.return_details.map((item, index) => (
                               <TableRow key={index}>
-                                <TableCell>{item.product_details.name}</TableCell>
+                                <TableCell>
+                                  {item.product_details.name}
+                                </TableCell>
                                 <TableCell>{item.quantity}</TableCell>
                                 <TableCell>
                                   {`${parseFloat(item.price).toLocaleString(

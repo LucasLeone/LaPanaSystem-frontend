@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../axios';
 import Cookies from 'js-cookie';
 
-const useProductCategories = () => {
+const useProductCategories = (offset = 0, limit = 100000) => {
   const [categories, setCategories] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchCategories = useCallback(async () => {
+  const fetchCategories = useCallback(async (offset, limit) => {
     setLoading(true);
     setError(null);
 
@@ -23,8 +24,13 @@ const useProductCategories = () => {
         headers: {
           Authorization: `Token ${token}`,
         },
+        params: {
+          offset: offset,
+          limit: limit,
+        },
       });
-      setCategories(response.data);
+      setCategories(response.data.results);
+      setTotalCount(response.data.count);
     } catch (err) {
       console.error('Error al cargar las categorías:', err);
       setError('Error al cargar las categorías.');
@@ -34,10 +40,10 @@ const useProductCategories = () => {
   }, []);
 
   useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+    fetchCategories(offset, limit);
+  }, [fetchCategories, limit, offset]);
 
-  return { categories, loading, error, fetchCategories };
+  return { categories, totalCount, loading, error, fetchCategories };
 };
 
 export default useProductCategories;

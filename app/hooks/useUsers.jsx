@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../axios';
 import Cookies from 'js-cookie';
 
-const useUsers = () => {
+const useUsers = (offset = 0, limit = 100000) => {
   const [users, setUsers] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async (offset, limit) => {
     setLoading(true);
     setError(null);
 
@@ -16,23 +17,27 @@ const useUsers = () => {
       const response = await api.get('/users/', {
         headers: {
           Authorization: `Token ${token}`,
-        }
+        },
+        params: {
+          offset: offset,
+          limit: limit,
+        },
       });
-      setUsers(response.data);
+      setUsers(response.data.results);
+      setTotalCount(response.data.count);
     } catch (err) {
       console.error(err);
       setError('Error al cargar los usuarios.');
     } finally {
       setLoading(false);
     }
-  };
-
-
-  useEffect(() => {
-    fetchUsers();
   }, []);
 
-  return { users, loading, error, fetchUsers };
+  useEffect(() => {
+    fetchUsers(offset, limit);
+  }, [offset, limit, fetchUsers]);
+
+  return { users, totalCount, loading, error, fetchUsers };
 };
 
 export default useUsers;

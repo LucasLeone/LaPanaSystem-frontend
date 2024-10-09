@@ -26,7 +26,7 @@ import {
   Accordion,
   AccordionItem,
   Select,
-  SelectItem
+  SelectItem,
 } from "@nextui-org/react";
 import {
   IconDownload,
@@ -36,9 +36,9 @@ import {
   IconTrash,
   IconChevronUp,
   IconChevronDown,
-  IconEdit
+  IconEdit,
 } from "@tabler/icons-react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
@@ -47,6 +47,7 @@ import useSales from "@/app/hooks/useSales";
 import useCustomers from "@/app/hooks/useCustomers";
 import useUsers from "@/app/hooks/useUsers";
 
+// Opciones de filtro
 const STATE_CHOICES = [
   { id: "creada", name: "Creada" },
   { id: "pendiente_entrega", name: "Pendiente de Entrega" },
@@ -71,6 +72,7 @@ const PAYMENT_METHOD_CHOICES = [
 export default function SalesPage() {
   const router = useRouter();
 
+  // Estados temporales para los filtros en el modal
   const [tempFilterState, setTempFilterState] = useState(null);
   const [tempFilterSaleType, setTempFilterSaleType] = useState(null);
   const [tempFilterPaymentMethod, setTempFilterPaymentMethod] = useState(null);
@@ -83,25 +85,72 @@ export default function SalesPage() {
 
   const [filters, setFilters] = useState({});
 
-  const { sales, loading: salesLoading, error: salesError, fetchSales } = useSales(filters);
-  const { customers, loading: customersLoading, error: customersError} = useCustomers();
-  const { users, loading: usersLoading, error: usersError } = useUsers();
-
-  const rowsPerPage = 10;
-  const [page, setPage] = useState(1);
-
   const [searchQuery, setSearchQuery] = useState("");
-
-  const [saleToDelete, setSaleToDelete] = useState(null);
-  const [saleToView, setSaleToView] = useState(null);
   const [sortDescriptor, setSortDescriptor] = useState({
     column: null,
     direction: null,
   });
 
+  const rowsPerPage = 10;
+  const [page, setPage] = useState(1);
+
+  const [saleToDelete, setSaleToDelete] = useState(null);
+  const [saleToView, setSaleToView] = useState(null);
+
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
-  const { isOpen: isFilterModalOpen, onOpen: onFilterModalOpen, onClose: onFilterModalClose } = useDisclosure();
+  const {
+    isOpen: isViewOpen,
+    onOpen: onViewOpen,
+    onClose: onViewClose,
+  } = useDisclosure();
+  const {
+    isOpen: isFilterModalOpen,
+    onOpen: onFilterModalOpen,
+    onClose: onFilterModalClose,
+  } = useDisclosure();
+
+  const { customers, loading: customersLoading, error: customersError } = useCustomers();
+  const { users, loading: usersLoading, error: usersError } = useUsers();
+
+  // Construcción de los filtros aplicados a partir de 'filters', 'searchQuery' y 'sortDescriptor'
+  const appliedFilters = useMemo(() => {
+    const newFilters = { ...filters };
+
+    if (searchQuery) {
+      newFilters.search = searchQuery;
+    }
+
+    if (sortDescriptor.column) {
+      const columnKeyToField = {
+        id: "id",
+        date: "date",
+        customer: "customer__name",
+        seller: "user__username",
+        total: "total",
+        sale_type: "sale_type",
+        payment_method: "payment_method",
+        state: "state",
+        needs_delivery: "needs_delivery",
+      };
+      const backendField =
+        columnKeyToField[sortDescriptor.column] || sortDescriptor.column;
+      newFilters.ordering =
+        sortDescriptor.direction === "ascending"
+          ? backendField
+          : `-${backendField}`;
+    }
+
+    return newFilters;
+  }, [filters, searchQuery, sortDescriptor]);
+
+  // Uso del hook useSales con los filtros aplicados y la paginación
+  const {
+    sales,
+    totalCount,
+    loading: salesLoading,
+    error: salesError,
+    fetchSales,
+  } = useSales(appliedFilters, (page - 1) * rowsPerPage);
 
   const applyFilters = () => {
     const newFilters = {};
@@ -128,11 +177,15 @@ export default function SalesPage() {
       newFilters.max_total = tempFilterMaxTotal;
     }
     if (tempFilterDate) {
-      newFilters.date = tempFilterDate;
+      newFilters.date = new Date(tempFilterDate).toISOString().split("T")[0];
     }
     if (tempFilterDateRange) {
-      newFilters.start_date = tempFilterDateRange.start;
-      newFilters.end_date = tempFilterDateRange.end;
+      newFilters.start_date = new Date(tempFilterDateRange.start)
+        .toISOString()
+        .split("T")[0];
+      newFilters.end_date = new Date(tempFilterDateRange.end)
+        .toISOString()
+        .split("T")[0];
     }
 
     setFilters(newFilters);
@@ -140,15 +193,23 @@ export default function SalesPage() {
     onFilterModalClose();
   };
 
+  // Función para limpiar los filtros
   const clearFilters = () => {
     setTempFilterState(null);
     setTempFilterSaleType(null);
     setTempFilterPaymentMethod(null);
     setTempFilterCustomer(null);
+    setTempFilterUser(null);
     setTempFilterMinTotal("");
     setTempFilterMaxTotal("");
     setTempFilterDate(null);
     setTempFilterDateRange(null);
+    setSearchQuery("");
+    setSortDescriptor({
+      column: null,
+      direction: null,
+    });
+    setFilters({});
   };
 
   const handleSearchChange = useCallback((e) => {
@@ -156,10 +217,13 @@ export default function SalesPage() {
     setPage(1);
   }, []);
 
-  const handleDeleteClick = useCallback((sale) => {
-    setSaleToDelete(sale);
-    onOpen();
-  }, [onOpen]);
+  const handleDeleteClick = useCallback(
+    (sale) => {
+      setSaleToDelete(sale);
+      onOpen();
+    },
+    [onOpen]
+  );
 
   const handleDeleteSale = useCallback(async () => {
     if (!saleToDelete) return;
@@ -171,232 +235,167 @@ export default function SalesPage() {
           Authorization: `Token ${token}`,
         },
       });
-      fetchSales(filters);
+      fetchSales(filters, (page - 1) * rowsPerPage, rowsPerPage);
       onClose();
     } catch (error) {
       console.error("Error al eliminar la venta:", error);
+      // Puedes manejar el error de manera más específica aquí
     }
-  }, [saleToDelete, fetchSales, filters, onClose]);
+  }, [saleToDelete, fetchSales, filters, onClose, page, rowsPerPage]);
 
-  const handleViewClick = useCallback((sale) => {
-    setSaleToView(sale);
-    onViewOpen();
-  }, [onViewOpen]);
+  const handleViewClick = useCallback(
+    (sale) => {
+      setSaleToView(sale);
+      onViewOpen();
+    },
+    [onViewOpen]
+  );
 
-  const handleEditClick = useCallback((sale) => {
-    if (sale.sale_details && Array.isArray(sale.sale_details) && sale.sale_details.length > 0) {
-      router.push(`/dashboard/sales/edit-with-details/${sale.id}`);
-    } else {
-      router.push(`/dashboard/sales/edit-without-details/${sale.id}`);
-    }
-  }, [router]);
+  const handleEditClick = useCallback(
+    (sale) => {
+      if (
+        sale.sale_details &&
+        Array.isArray(sale.sale_details) &&
+        sale.sale_details.length > 0
+      ) {
+        router.push(`/dashboard/sales/edit-with-details/${sale.id}`);
+      } else {
+        router.push(`/dashboard/sales/edit-without-details/${sale.id}`);
+      }
+    },
+    [router]
+  );
 
   const columns = [
-    { key: 'id', label: '#', sortable: true },
-    { key: 'date', label: 'Fecha', sortable: true },
-    { key: 'customer', label: 'Cliente', sortable: true },
-    { key: 'seller', label: 'Vendedor', sortable: true },
-    { key: 'total', label: 'Total', sortable: true },
-    { key: 'sale_type', label: 'Tipo de Venta', sortable: true },
-    { key: 'payment_method', label: 'Método de Pago', sortable: true },
-    { key: 'state', label: 'Estado', sortable: true },
-    { key: 'needs_delivery', label: 'Delivery', sortable: false },
-    { key: 'actions', label: 'Acciones', sortable: false },
+    { key: "id", label: "#", sortable: true },
+    { key: "date", label: "Fecha", sortable: true },
+    { key: "customer", label: "Cliente", sortable: true },
+    { key: "seller", label: "Vendedor", sortable: true },
+    { key: "total", label: "Total", sortable: true },
+    { key: "sale_type", label: "Tipo de Venta", sortable: true },
+    { key: "payment_method", label: "Método de Pago", sortable: true },
+    { key: "state", label: "Estado", sortable: true },
+    { key: "needs_delivery", label: "Delivery", sortable: false },
+    { key: "actions", label: "Acciones", sortable: false },
   ];
 
-  const sortedSales = useMemo(() => {
-    if (!sortDescriptor.column) return [...sales];
-    try {
-      const sorted = [...sales].sort((a, b) => {
-        let aValue, bValue;
+  const rows = useMemo(
+    () =>
+      sales.map((sale) => ({
+        id: sale.id,
+        date: new Date(sale.date).toLocaleString("es-AR", {
+          year: "numeric",
+          month: "numeric",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }),
+        customer: sale.customer_details?.name || "",
+        seller: sale.user_details?.username || "",
+        total: `${parseFloat(sale.total).toLocaleString("es-AR", {
+          style: "currency",
+          currency: "ARS",
+        })}`,
+        sale_type: capitalize(sale.sale_type),
+        payment_method: capitalize(sale.payment_method),
+        state:
+          STATE_CHOICES.find((item) => item.id === sale.state)?.name ||
+          sale.state,
+        needs_delivery: sale.needs_delivery ? "Sí" : "No",
+        actions: (
+          <div className="flex gap-1">
+            <Tooltip content="Ver Detalles">
+              <Button
+                variant="light"
+                className="rounded-md"
+                isIconOnly
+                color="primary"
+                onPress={() => handleViewClick(sale)}
+                aria-label={`Ver detalles de la venta ${sale.id}`}
+              >
+                <IconChevronDown className="h-5" />
+              </Button>
+            </Tooltip>
+            <Tooltip content="Editar">
+              <Button
+                variant="light"
+                className="rounded-md"
+                isIconOnly
+                color="warning"
+                onPress={() => handleEditClick(sale)}
+                aria-label={`Editar venta ${sale.id}`}
+              >
+                <IconEdit className="h-5" />
+              </Button>
+            </Tooltip>
+            <Tooltip content="Eliminar">
+              <Button
+                variant="light"
+                className="rounded-md"
+                isIconOnly
+                color="danger"
+                onPress={() => handleDeleteClick(sale)}
+                aria-label={`Eliminar venta ${sale.id}`}
+              >
+                <IconTrash className="h-5" />
+              </Button>
+            </Tooltip>
+          </div>
+        ),
+      })),
+    [sales, handleDeleteClick, handleEditClick, handleViewClick]
+  );
 
-        switch (sortDescriptor.column) {
-          case 'customer':
-            aValue = a.customer_details?.name || '';
-            bValue = b.customer_details?.name || '';
-            break;
-          case 'seller':
-            aValue = a.user_details?.username || '';
-            bValue = b.user_details?.username || '';
-            break;
-          case 'total':
-            aValue = a.total != null ? parseFloat(a.total) : 0;
-            bValue = b.total != null ? parseFloat(b.total) : 0;
-            break;
-          case 'date':
-            aValue = new Date(a.date);
-            bValue = new Date(b.date);
-            break;
-          default:
-            aValue = a[sortDescriptor.column] != null ? a[sortDescriptor.column] : '';
-            bValue = b[sortDescriptor.column] != null ? b[sortDescriptor.column] : '';
-        }
-
-        const aType = typeof aValue;
-        const bType = typeof bValue;
-
-        if (aType === 'string' && bType === 'string') {
-          return sortDescriptor.direction === 'ascending'
-            ? aValue.localeCompare(bValue)
-            : bValue.localeCompare(aValue);
-        }
-
-        if (aType === 'number' && bType === 'number') {
-          return sortDescriptor.direction === 'ascending'
-            ? aValue - bValue
-            : bValue - aValue;
-        }
-
-        if (aValue instanceof Date && bValue instanceof Date) {
-          return sortDescriptor.direction === 'ascending'
-            ? aValue - bValue
-            : bValue - aValue;
-        }
-
-        const aStr = String(aValue);
-        const bStr = String(bValue);
-        return sortDescriptor.direction === 'ascending'
-          ? aStr.localeCompare(bStr)
-          : bStr.localeCompare(aStr);
-      });
-      return sorted;
-    } catch (error) {
-      console.error("Error al ordenar las ventas:", error);
-      return [...sales];
-    }
-  }, [sales, sortDescriptor]);
-
-  const filteredSales = useMemo(() => {
-    if (!searchQuery) return sortedSales;
-    const lowerSearch = searchQuery.toLowerCase();
-    return sortedSales.filter(
-      (s) =>
-        s.customer_details?.name.toLowerCase().includes(lowerSearch) ||
-        String(s.id).includes(lowerSearch) ||
-        s.user_details?.username.toLowerCase().includes(lowerSearch) ||
-        s.payment_method.toLowerCase().includes(lowerSearch)
-    );
-  }, [sortedSales, searchQuery]);
-
-  const rows = useMemo(() => (
-    filteredSales.map(sale => ({
-      id: sale.id,
-      date: new Date(sale.date).toLocaleString('es-AR', {
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      }),
-      customer: sale.customer_details?.name || '',
-      seller: sale.user_details?.username || '',
-      total: `${parseFloat(sale.total).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`,
-      sale_type: capitalize(sale.sale_type),
-      payment_method: capitalize(sale.payment_method),
-      state: STATE_CHOICES.find(item => item.id === sale.state)?.name || sale.state,
-      needs_delivery: sale.needs_delivery ? 'Sí' : 'No',
-      actions: (
-        <div className="flex gap-1">
-          <Tooltip content="Ver Detalles">
-            <Button
-              variant="light"
-              className="rounded-md"
-              isIconOnly
-              color="primary"
-              onPress={() => handleViewClick(sale)}
-              aria-label={`Ver detalles de la venta ${sale.id}`}
-            >
-              <IconChevronDown className="h-5" />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Editar">
-            <Button
-              variant="light"
-              className="rounded-md"
-              isIconOnly
-              color="warning"
-              onPress={() => handleEditClick(sale)}
-              aria-label={`Editar venta ${sale.id}`}
-            >
-              <IconEdit className="h-5" />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Eliminar">
-            <Button
-              variant="light"
-              className="rounded-md"
-              isIconOnly
-              color="danger"
-              onPress={() => handleDeleteClick(sale)}
-              aria-label={`Eliminar venta ${sale.id}`}
-            >
-              <IconTrash className="h-5" />
-            </Button>
-          </Tooltip>
-        </div>
-      )
-    }))
-  ), [filteredSales, handleDeleteClick, handleEditClick, handleViewClick]);
-
-  const totalItems = rows.length;
-  const totalPages = Math.ceil(totalItems / rowsPerPage);
-
-  useEffect(() => {
-    if (page > totalPages && totalPages > 0) {
-      setPage(1);
-    }
-  }, [totalPages, page]);
-
-  const currentItems = useMemo(() => {
-    const startIdx = (page - 1) * rowsPerPage;
-    const endIdx = startIdx + rowsPerPage;
-    return rows.slice(startIdx, endIdx);
-  }, [rows, page, rowsPerPage]);
-
-  const currentItemsCount = currentItems.length;
+  const totalPages = Math.ceil(totalCount / rowsPerPage);
 
   const handlePageChangeFunc = useCallback((newPage) => {
     setPage(newPage);
   }, []);
 
   const handleSortChange = useCallback((columnKey) => {
-    setSortDescriptor(prev => {
+    setSortDescriptor((prev) => {
       if (prev.column === columnKey) {
         return {
           column: columnKey,
-          direction: prev.direction === "ascending" ? "descending" : "ascending"
+          direction:
+            prev.direction === "ascending" ? "descending" : "ascending",
         };
       } else {
         return {
           column: columnKey,
-          direction: "ascending"
+          direction: "ascending",
         };
       }
     });
   }, []);
 
-  const renderHeader = useCallback((column) => {
-    const isSortable = column.sortable;
-    const isSorted = sortDescriptor.column === column.key;
-    const direction = isSorted ? sortDescriptor.direction : null;
+  const renderHeader = useCallback(
+    (column) => {
+      const isSortable = column.sortable;
+      const isSorted = sortDescriptor.column === column.key;
+      const direction = isSorted ? sortDescriptor.direction : null;
 
-    return (
-      <div
-        className={`flex items-center ${isSortable ? "cursor-pointer" : ""}`}
-        onClick={() => isSortable && handleSortChange(column.key)}
-        aria-sort={isSorted ? direction : "none"}
-      >
-        <span>{column.label}</span>
-        {isSortable &&
-          (direction === "ascending" ? (
-            <IconChevronUp className="ml-1 h-4 w-4" />
-          ) : direction === "descending" ? (
-            <IconChevronDown className="ml-1 h-4 w-4" />
-          ) : null)}
-      </div>
-    );
-  }, [sortDescriptor, handleSortChange]);
+      return (
+        <div
+          className={`flex items-center ${
+            isSortable ? "cursor-pointer" : ""
+          }`}
+          onClick={() => isSortable && handleSortChange(column.key)}
+          aria-sort={isSorted ? direction : "none"}
+        >
+          <span>{column.label}</span>
+          {isSortable &&
+            (direction === "ascending" ? (
+              <IconChevronUp className="ml-1 h-4 w-4" />
+            ) : direction === "descending" ? (
+              <IconChevronDown className="ml-1 h-4 w-4" />
+            ) : null)}
+        </div>
+      );
+    },
+    [sortDescriptor, handleSortChange]
+  );
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
@@ -410,7 +409,7 @@ export default function SalesPage() {
               Exportar
             </Button>
           </Tooltip>
-          <Tooltip content="Agregar nueva venta unicamente con total">
+          <Tooltip content="Agregar nueva venta únicamente con total">
             <Link href="/dashboard/sales/create-without-details">
               <Button className="rounded-md bg-black text-white">
                 <IconPlus className="h-4 mr-1" />
@@ -429,7 +428,7 @@ export default function SalesPage() {
         </div>
       </div>
 
-      {/* Búsqueda */}
+      {/* Búsqueda y Filtros */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
         <Input
           placeholder="Buscar ventas"
@@ -439,7 +438,7 @@ export default function SalesPage() {
           value={searchQuery}
           onChange={handleSearchChange}
           onClear={() => {
-            setSearchQuery('');
+            setSearchQuery("");
             setPage(1);
           }}
           className="w-full md:w-1/3"
@@ -466,13 +465,9 @@ export default function SalesPage() {
             <Spinner size="lg" />
           </div>
         ) : salesError ? (
-          <div className="text-red-500 text-center p-6">
-            {salesError}
-          </div>
-        ) : currentItemsCount === 0 ? (
-          <div className="text-center p-6">
-            No hay ventas para mostrar.
-          </div>
+          <div className="text-red-500 text-center p-6">{salesError}</div>
+        ) : rows.length === 0 ? (
+          <div className="text-center p-6">No hay ventas para mostrar.</div>
         ) : (
           <Table
             aria-label="Ventas"
@@ -493,17 +488,22 @@ export default function SalesPage() {
               )}
             </TableHeader>
             <TableBody>
-              {currentItems.map((item) => (
+              {rows.map((item) => (
                 <TableRow key={item.id}>
                   {columns.map((column) => {
                     if (column.key === "id") {
                       return <TableCell key={column.key}>{item.id}</TableCell>;
                     }
                     if (column.key === "actions") {
-                      return <TableCell key={column.key}>{item.actions}</TableCell>;
+                      return (
+                        <TableCell key={column.key}>{item.actions}</TableCell>
+                      );
                     }
                     return (
-                      <TableCell key={column.key} className="min-w-[80px] sm:min-w-[100px]">
+                      <TableCell
+                        key={column.key}
+                        className="min-w-[80px] sm:min-w-[100px]"
+                      >
                         {item[column.key]}
                       </TableCell>
                     );
@@ -516,10 +516,10 @@ export default function SalesPage() {
       </div>
 
       {/* Paginación */}
-      {!salesLoading && !salesError && currentItemsCount !== 0 && (
-        <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
+      {!salesLoading && !salesError && rows.length !== 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-4">
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
-            Mostrando {currentItemsCount} de {totalItems} ventas
+            Mostrando {sales.length} de {totalCount} ventas
           </p>
           <Pagination
             total={totalPages}
@@ -549,7 +549,7 @@ export default function SalesPage() {
               </ModalHeader>
               <ModalBody>
                 <div className="flex flex-col space-y-4">
-                  {/* Filtro de Estado */}
+                  {/* Filtro de Estado con Select */}
                   <div>
                     <Select
                       label="Buscar y seleccionar estado"
@@ -557,15 +557,16 @@ export default function SalesPage() {
                       className="w-full"
                       aria-label="Filtro de Estado"
                       onClear={() => setTempFilterState(null)}
-                      onSelectionChange={(value) => setTempFilterState(value)}
-                      selectedKey={tempFilterState}
+                      onSelectionChange={(value) =>
+                        setTempFilterState(value ? Array.from(value)[0] : null)
+                      }
+                      selectedKeys={tempFilterState ? new Set([tempFilterState]) : new Set()}
                       variant="underlined"
-                      isClearable
                     >
                       {STATE_CHOICES.map((state) => (
                         <SelectItem
-                          key={state.id.toString()}
-                          value={state.id.toString()}
+                          key={state.id}
+                          value={state.id}
                         >
                           {state.name}
                         </SelectItem>
@@ -573,7 +574,7 @@ export default function SalesPage() {
                     </Select>
                   </div>
 
-                  {/* Filtro de Tipo de Venta */}
+                  {/* Filtro de Tipo de Venta con Select */}
                   <div>
                     <Select
                       label="Buscar y seleccionar tipo de venta"
@@ -581,15 +582,16 @@ export default function SalesPage() {
                       className="w-full"
                       aria-label="Filtro de Tipo de Venta"
                       onClear={() => setTempFilterSaleType(null)}
-                      onSelectionChange={(value) => setTempFilterSaleType(value)}
-                      selectedKey={tempFilterSaleType}
+                      onSelectionChange={(value) =>
+                        setTempFilterSaleType(value ? Array.from(value)[0] : null)
+                      }
+                      selectedKeys={tempFilterSaleType ? new Set([tempFilterSaleType]) : new Set()}
                       variant="underlined"
-                      isClearable
                     >
                       {SALE_TYPE_CHOICES.map((type) => (
                         <SelectItem
-                          key={type.id.toString()}
-                          value={type.id.toString()}
+                          key={type.id}
+                          value={type.id}
                         >
                           {type.name}
                         </SelectItem>
@@ -597,7 +599,7 @@ export default function SalesPage() {
                     </Select>
                   </div>
 
-                  {/* Filtro de Método de Pago */}
+                  {/* Filtro de Método de Pago con Select */}
                   <div>
                     <Select
                       label="Buscar y seleccionar método de pago"
@@ -605,15 +607,16 @@ export default function SalesPage() {
                       className="w-full"
                       aria-label="Filtro de Método de Pago"
                       onClear={() => setTempFilterPaymentMethod(null)}
-                      onSelectionChange={(value) => setTempFilterPaymentMethod(value)}
-                      selectedKey={tempFilterPaymentMethod}
+                      onSelectionChange={(value) =>
+                        setTempFilterPaymentMethod(value ? Array.from(value)[0] : null)
+                      }
+                      selectedKeys={tempFilterPaymentMethod ? new Set([tempFilterPaymentMethod]) : new Set()}
                       variant="underlined"
-                      isClearable
                     >
                       {PAYMENT_METHOD_CHOICES.map((method) => (
                         <SelectItem
-                          key={method.id.toString()}
-                          value={method.id.toString()}
+                          key={method.id}
+                          value={method.id}
                         >
                           {method.name}
                         </SelectItem>
@@ -621,7 +624,7 @@ export default function SalesPage() {
                     </Select>
                   </div>
 
-                  {/* Filtro de Cliente */}
+                  {/* Filtro de Cliente con Autocomplete */}
                   <div>
                     <Autocomplete
                       label="Buscar y seleccionar cliente"
@@ -629,7 +632,9 @@ export default function SalesPage() {
                       className="w-full"
                       aria-label="Filtro de Cliente"
                       onClear={() => setTempFilterCustomer(null)}
-                      onSelectionChange={(value) => setTempFilterCustomer(value)}
+                      onSelectionChange={(value) =>
+                        setTempFilterCustomer(value ? value : null)
+                      }
                       selectedKey={tempFilterCustomer}
                       variant="underlined"
                       isClearable
@@ -645,6 +650,7 @@ export default function SalesPage() {
                     </Autocomplete>
                   </div>
 
+                  {/* Filtro de Usuario con Autocomplete */}
                   <div>
                     <Autocomplete
                       label="Buscar y seleccionar usuario"
@@ -652,7 +658,9 @@ export default function SalesPage() {
                       className="w-full"
                       aria-label="Filtro de Usuario"
                       onClear={() => setTempFilterUser(null)}
-                      onSelectionChange={(value) => setTempFilterUser(value)}
+                      onSelectionChange={(value) =>
+                        setTempFilterUser(value ? value : null)
+                      }
                       selectedKey={tempFilterUser}
                       variant="underlined"
                       isClearable
@@ -683,7 +691,9 @@ export default function SalesPage() {
                         isClearable
                         startContent={
                           <div className="pointer-events-none flex items-center">
-                            <span className="text-default-400 text-small">$</span>
+                            <span className="text-default-400 text-small">
+                              $
+                            </span>
                           </div>
                         }
                       />
@@ -701,7 +711,9 @@ export default function SalesPage() {
                         isClearable
                         startContent={
                           <div className="pointer-events-none flex items-center">
-                            <span className="text-default-400 text-small">$</span>
+                            <span className="text-default-400 text-small">
+                              $
+                            </span>
                           </div>
                         }
                       />
@@ -747,15 +759,23 @@ export default function SalesPage() {
       </Modal>
 
       {/* Modal de Confirmación de Eliminación */}
-      <Modal isOpen={isOpen} onOpenChange={onClose} aria-labelledby="modal-title" placement="top-center">
+      <Modal
+        isOpen={isOpen}
+        onOpenChange={onClose}
+        aria-labelledby="modal-title"
+        placement="top-center"
+      >
         <ModalContent>
           {() => (
             <>
-              <ModalHeader className="flex flex-col gap-1">Confirmar Eliminación</ModalHeader>
+              <ModalHeader className="flex flex-col gap-1">
+                Confirmar Eliminación
+              </ModalHeader>
               <ModalBody>
                 <p>
-                  ¿Estás seguro de que deseas eliminar la venta <strong>#{saleToDelete?.id}</strong>?
-                  Esta acción no se puede deshacer.
+                  ¿Estás seguro de que deseas eliminar la venta{" "}
+                  <strong>#{saleToDelete?.id}</strong>? Esta acción no se puede
+                  deshacer.
                 </p>
               </ModalBody>
               <ModalFooter>
@@ -763,14 +783,14 @@ export default function SalesPage() {
                   color="danger"
                   variant="light"
                   onPress={onClose}
-                  disabled={false} // Puedes manejar el estado de deshabilitado si es necesario
+                  disabled={false}
                 >
                   Cancelar
                 </Button>
                 <Button
                   color="primary"
                   onPress={handleDeleteSale}
-                  disabled={false} // Puedes manejar el estado de deshabilitado si es necesario
+                  disabled={false}
                 >
                   Eliminar
                 </Button>
@@ -781,25 +801,69 @@ export default function SalesPage() {
       </Modal>
 
       {/* Modal para Ver Detalles */}
-      <Modal size="2xl" isOpen={isViewOpen} onOpenChange={onViewClose} aria-labelledby="view-modal-title" placement="center">
+      <Modal
+        size="2xl"
+        isOpen={isViewOpen}
+        onOpenChange={onViewClose}
+        aria-labelledby="view-modal-title"
+        placement="center"
+      >
         <ModalContent>
           {() => (
             <>
-              <ModalHeader className="flex flex-col gap-1">Detalles de la Venta #{saleToView?.id}</ModalHeader>
+              <ModalHeader className="flex flex-col gap-1">
+                Detalles de la Venta #{saleToView?.id}
+              </ModalHeader>
               <ModalBody>
                 <Accordion>
-                  <AccordionItem key="1" aria-label="Detalles Generales" title="Detalles Generales">
-                    <p><strong>Fecha:</strong> {new Date(saleToView?.date).toLocaleDateString('es-AR')}</p>
-                    <p><strong>Cliente:</strong> {saleToView?.customer_details?.name}</p>
-                    <p><strong>Vendedor:</strong> {saleToView?.user_details?.first_name} {saleToView?.user_details?.last_name}</p>
-                    <p><strong>Total:</strong> {`${parseFloat(saleToView?.total).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`}</p>
-                    <p><strong>Tipo de Venta:</strong> {capitalize(saleToView?.sale_type)}</p>
-                    <p><strong>Método de Pago:</strong> {capitalize(saleToView?.payment_method)}</p>
-                    <p><strong>Estado:</strong> {STATE_CHOICES.find(item => item.id === saleToView?.state)?.name || saleToView?.state}</p>
+                  <AccordionItem
+                    key="1"
+                    aria-label="Detalles Generales"
+                    title="Detalles Generales"
+                  >
+                    <p>
+                      <strong>Fecha:</strong>{" "}
+                      {new Date(saleToView?.date).toLocaleDateString("es-AR")}
+                    </p>
+                    <p>
+                      <strong>Cliente:</strong>{" "}
+                      {saleToView?.customer_details?.name}
+                    </p>
+                    <p>
+                      <strong>Vendedor:</strong>{" "}
+                      {saleToView?.user_details?.first_name}{" "}
+                      {saleToView?.user_details?.last_name}
+                    </p>
+                    <p>
+                      <strong>Total:</strong>{" "}
+                      {`${parseFloat(saleToView?.total).toLocaleString("es-AR", {
+                        style: "currency",
+                        currency: "ARS",
+                      })}`}
+                    </p>
+                    <p>
+                      <strong>Tipo de Venta:</strong>{" "}
+                      {capitalize(saleToView?.sale_type)}
+                    </p>
+                    <p>
+                      <strong>Método de Pago:</strong>{" "}
+                      {capitalize(saleToView?.payment_method)}
+                    </p>
+                    <p>
+                      <strong>Estado:</strong>{" "}
+                      {STATE_CHOICES.find(
+                        (item) => item.id === saleToView?.state
+                      )?.name || saleToView?.state}
+                    </p>
                   </AccordionItem>
-                  <AccordionItem key="2" aria-label="Items de la Venta" title="Items de la Venta">
+                  <AccordionItem
+                    key="2"
+                    aria-label="Items de la Venta"
+                    title="Items de la Venta"
+                  >
                     <div className="overflow-x-auto max-h-60 border rounded-md">
-                      {saleToView?.sale_details && saleToView.sale_details.length > 0 ? (
+                      {saleToView?.sale_details &&
+                      saleToView.sale_details.length > 0 ? (
                         <Table
                           aria-label="Items de la Venta"
                           className="border-none min-w-full"
@@ -808,18 +872,44 @@ export default function SalesPage() {
                           removeWrapper
                         >
                           <TableHeader>
-                            <TableColumn className="bg-white text-bold border-b-1">Producto</TableColumn>
-                            <TableColumn className="bg-white text-bold border-b-1">Cantidad</TableColumn>
-                            <TableColumn className="bg-white text-bold border-b-1">Precio</TableColumn>
-                            <TableColumn className="bg-white text-bold border-b-1">Subtotal</TableColumn>
+                            <TableColumn className="bg-white text-bold border-b-1">
+                              Producto
+                            </TableColumn>
+                            <TableColumn className="bg-white text-bold border-b-1">
+                              Cantidad
+                            </TableColumn>
+                            <TableColumn className="bg-white text-bold border-b-1">
+                              Precio
+                            </TableColumn>
+                            <TableColumn className="bg-white text-bold border-b-1">
+                              Subtotal
+                            </TableColumn>
                           </TableHeader>
                           <TableBody>
                             {saleToView.sale_details.map((item, index) => (
                               <TableRow key={index}>
-                                <TableCell>{item.product_details.name}</TableCell>
+                                <TableCell>
+                                  {item.product_details.name}
+                                </TableCell>
                                 <TableCell>{item.quantity}</TableCell>
-                                <TableCell>{`${parseFloat(item.price).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`}</TableCell>
-                                <TableCell>{`${parseFloat(item.subtotal).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`}</TableCell>
+                                <TableCell>
+                                  {`${parseFloat(item.price).toLocaleString(
+                                    "es-AR",
+                                    {
+                                      style: "currency",
+                                      currency: "ARS",
+                                    }
+                                  )}`}
+                                </TableCell>
+                                <TableCell>
+                                  {`${parseFloat(item.subtotal).toLocaleString(
+                                    "es-AR",
+                                    {
+                                      style: "currency",
+                                      currency: "ARS",
+                                    }
+                                  )}`}
+                                </TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
