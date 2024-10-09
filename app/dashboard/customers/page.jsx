@@ -2,29 +2,28 @@
 
 import {
   Button,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
-  getKeyValue,
   Input,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-  Pagination,
   Spinner,
+  Link,
   Tooltip,
-  DropdownSection,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Pagination,
   Modal,
   ModalContent,
   ModalHeader,
   ModalBody,
   ModalFooter,
   useDisclosure,
-  Link,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  DropdownSection,
 } from "@nextui-org/react";
 import {
   IconDownload,
@@ -36,39 +35,19 @@ import {
   IconChevronUp,
   IconChevronDown,
 } from "@tabler/icons-react";
-import { useState, useEffect, useMemo, useCallback } from "react";
-import api from "@/app/axios";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { capitalize } from "@/app/utils";
 import useCustomers from "@/app/hooks/useCustomers";
 
 export default function CustomersPage() {
-  const { customers, loading: customersLoading, error: customersError, fetchCustomers } = useCustomers();
-  
-  const rowsPerPage = 10;
-  const [page, setPage] = useState(1);
-  
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState(null);
-  
-  const [filterKey, setFilterKey] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  
-  const [customerToDelete, setCustomerToDelete] = useState(null);
-  const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
-  
-  const [user, setUser] = useState(null);
-  
   const router = useRouter();
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  // Estado para el usuario
+  const [user, setUser] = useState(null);
 
-  const filterItems = [
-    { key: "minorista", label: "Minorista" },
-    { key: "mayorista", label: "Mayorista" },
-  ];
-
+  // useEffect para obtener el usuario
   useEffect(() => {
     const userData = Cookies.get("user");
     if (userData) {
@@ -81,25 +60,53 @@ export default function CustomersPage() {
     }
   }, []);
 
-  const handleFilterAction = useCallback((key) => {
+  // Estados para filtros y ordenamiento
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  const [filterCustomerType, setFilterCustomerType] = useState("");
+  const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
+  const [page, setPage] = useState(1);
+
+  // Estados para eliminación de clientes
+  const [customerToDelete, setCustomerToDelete] = useState(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Filtros para tipo de cliente
+  const filterItems = [
+    { key: "minorista", label: "Minorista" },
+    { key: "mayorista", label: "Mayorista" },
+  ];
+
+  const offset = useMemo(() => (page - 1) * 10, [page]);
+
+  const orderingParam = useMemo(() => {
+    if (!sortDescriptor.column) return "";
+    const prefix = sortDescriptor.direction === "ascending" ? "" : "-";
+    return prefix + sortDescriptor.column;
+  }, [sortDescriptor]);
+
+  const { customers, totalCount, loading, error: fetchError, fetchCustomers } = useCustomers({
+    search: debouncedSearchQuery,
+    customer_type: filterCustomerType,
+    ordering: orderingParam,
+    page: offset,
+    limit: 10,
+  });
+
+  const totalPages = Math.ceil(totalCount / 10);
+
+  const handleFilterCustomerType = useCallback((key) => {
     if (key === "none") {
-      setFilterKey(null);
+      setFilterCustomerType("");
     } else {
-      setFilterKey(key);
+      setFilterCustomerType(key);
     }
     setPage(1);
   }, []);
 
-  const handleSearchChange = useCallback((e) => {
-    setSearchQuery(e.target.value);
-    setPage(1);
-  }, []);
-
-  const handleDeleteClick = useCallback((customer) => {
-    setCustomerToDelete(customer);
-    onOpen();
-  }, [onOpen]);
-
+  // Función para manejar la eliminación del cliente
   const handleDeleteCustomer = useCallback(async () => {
     if (!customerToDelete) return;
 
@@ -111,149 +118,54 @@ export default function CustomersPage() {
           Authorization: `Token ${token}`,
         },
       });
-      fetchCustomers();
+      fetchCustomers(); // Actualiza la lista de clientes después de eliminar
       onClose();
-    } catch (error) {
-      console.error("Error al eliminar cliente:", error);
+    } catch (err) {
+      console.error("Error al eliminar cliente:", err);
       setError("Error al eliminar el cliente.");
     } finally {
       setDeleting(false);
     }
-  }, [customerToDelete, onClose, fetchCustomers]);
+  }, [customerToDelete, fetchCustomers, onClose]);
 
-  const columns = [
-    { key: 'id', label: '#', sortable: true },
-    { key: 'name', label: 'Nombre', sortable: true },
-    { key: 'phone', label: 'Celular', sortable: false },
-    { key: 'email', label: 'Correo', sortable: false },
-    { key: 'address', label: 'Dirección', sortable: false },
-    { key: 'customer_type', label: 'Tipo de cliente', sortable: true },
-    { key: 'actions', label: 'Acciones', sortable: false },
-  ];
+  // Función para manejar la apertura del modal de eliminación
+  const handleDeleteClick = useCallback((customer) => {
+    setCustomerToDelete(customer);
+    onOpen();
+  }, [onOpen]);
 
-  const sortedCustomers = useMemo(() => {
-    if (!sortDescriptor.column) return [...customers];
-    const sorted = [...customers].sort((a, b) => {
-      const aValue = a[sortDescriptor.column];
-      const bValue = b[sortDescriptor.column];
-
-      if (typeof aValue === "string") {
-        return sortDescriptor.direction === "ascending"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
-
-      if (aValue < bValue) {
-        return sortDescriptor.direction === "ascending" ? -1 : 1;
-      }
-      if (aValue > bValue) {
-        return sortDescriptor.direction === "ascending" ? 1 : -1;
-      }
-      return 0;
-    });
-    return sorted;
-  }, [customers, sortDescriptor]);
-
-  const filteredCustomers = useMemo(() => {
-    let filtered = [...sortedCustomers];
-
-    if (filterKey) {
-      const normalizedFilterKey = filterKey.toLowerCase().trim();
-      filtered = filtered.filter(customer =>
-        customer.customer_type &&
-        customer.customer_type.toLowerCase().trim() === normalizedFilterKey
-      );
-    }
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(customer =>
-        (customer.name && customer.name.toLowerCase().includes(query)) ||
-        (customer.email && customer.email.toLowerCase().includes(query)) ||
-        (customer.phone_number && customer.phone_number.includes(searchQuery))
-      );
-    }
-
-    return filtered;
-  }, [sortedCustomers, filterKey, searchQuery]);
-
-  const rows = useMemo(() => (
-    filteredCustomers.map(customer => ({
-      id: customer.id,
-      name: customer.name,
-      phone: customer.phone_number,
-      email: customer.email,
-      address: customer.address,
-      customer_type: capitalize(customer.customer_type) || 'N/A',
-      actions: (
-        <div className="flex gap-1">
-          <Tooltip content="Editar">
-            <Button
-              variant="light"
-              className="rounded-md"
-              isIconOnly
-              color="warning"
-              onPress={() => router.push(`/dashboard/customers/edit/${customer.id}`)}
-              aria-label={`Editar cliente ${customer.name}`}
-            >
-              <IconEdit className="h-8" />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Eliminar">
-            <Button
-              variant="light"
-              className="rounded-md"
-              isIconOnly
-              color="danger"
-              onPress={() => handleDeleteClick(customer)}
-              aria-label={`Eliminar cliente ${customer.name}`}
-              isDisabled={user?.user_type !== 'ADMIN'}
-            >
-              <IconTrash className="h-8" />
-            </Button>
-          </Tooltip>
-        </div>
-      )
-    }))
-  ), [filteredCustomers, handleDeleteClick, router, user]);
-
-  const totalItems = rows.length;
-  const totalPages = Math.ceil(totalItems / rowsPerPage);
-
+  // Manejo de búsqueda con debouncing
   useEffect(() => {
-    if (page > totalPages && totalPages > 0) {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
       setPage(1);
-    }
-  }, [totalPages, page]);
+    }, 500); // 500ms de retraso
 
-  const currentItems = useMemo(() => {
-    const startIdx = (page - 1) * rowsPerPage;
-    const endIdx = startIdx + rowsPerPage;
-    return rows.slice(startIdx, endIdx);
-  }, [rows, page, rowsPerPage]);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
 
-  const currentItemsCount = currentItems.length;
-
-  const handlePageChangeFunc = useCallback((newPage) => {
+  // Función para manejar el cambio de página
+  const handlePageChange = useCallback((newPage) => {
     setPage(newPage);
   }, []);
 
+  // Función para manejar el cambio de ordenamiento
   const handleSortChange = useCallback((columnKey) => {
-    setSortDescriptor(prev => {
+    setSortDescriptor((prev) => {
       if (prev.column === columnKey) {
         return {
           column: columnKey,
-          direction: prev.direction === "ascending" ? "descending" : "ascending"
+          direction: prev.direction === "ascending" ? "descending" : "ascending",
         };
       } else {
-        return {
-          column: columnKey,
-          direction: "ascending"
-        };
+        return { column: columnKey, direction: "ascending" };
       }
     });
   }, []);
 
+  // Función para renderizar el header con íconos de ordenamiento
   const renderHeader = useCallback((column) => {
     const isSortable = column.sortable;
     const isSorted = sortDescriptor.column === column.key;
@@ -266,14 +178,69 @@ export default function CustomersPage() {
         aria-sort={isSorted ? direction : "none"}
       >
         <span>{column.label}</span>
-        {isSortable && (
-          direction === "ascending" ? <IconChevronUp className="ml-1 h-4 w-4" /> :
-            direction === "descending" ? <IconChevronDown className="ml-1 h-4 w-4" /> :
-              null
-        )}
+        {isSortable &&
+          (direction === "ascending" ? (
+            <IconChevronUp className="ml-1 h-4 w-4" />
+          ) : direction === "descending" ? (
+            <IconChevronDown className="ml-1 h-4 w-4" />
+          ) : null)}
       </div>
     );
   }, [sortDescriptor, handleSortChange]);
+
+  // Definición de columnas de la tabla
+  const columns = [
+    { key: "id", label: "#", sortable: true },
+    { key: "name", label: "Nombre", sortable: true },
+    { key: "phone_number", label: "Celular", sortable: false },
+    { key: "email", label: "Correo", sortable: false },
+    { key: "address", label: "Dirección", sortable: false },
+    { key: "customer_type", label: "Tipo de Cliente", sortable: true },
+    { key: "actions", label: "Acciones", sortable: false },
+  ];
+
+  // Generación de filas para la tabla
+  const rows = useMemo(
+    () =>
+      customers.map((customer) => ({
+        id: customer.id,
+        name: customer.name,
+        phone_number: customer.phone_number,
+        email: customer.email,
+        address: customer.address,
+        customer_type: capitalize(customer.customer_type) || "N/A",
+        actions: (
+          <div className="flex gap-1">
+            <Tooltip content="Editar">
+              <Button
+                variant="light"
+                className="rounded-md"
+                isIconOnly
+                color="warning"
+                onPress={() => router.push(`/dashboard/customers/edit/${customer.id}`)}
+                aria-label={`Editar cliente ${customer.name}`}
+              >
+                <IconEdit className="h-5" />
+              </Button>
+            </Tooltip>
+            <Tooltip content="Eliminar">
+              <Button
+                variant="light"
+                className="rounded-md"
+                isIconOnly
+                color="danger"
+                onPress={() => handleDeleteClick(customer)}
+                aria-label={`Eliminar cliente ${customer.name}`}
+                isDisabled={user?.user_type !== 'ADMIN'}
+              >
+                <IconTrash className="h-5" />
+              </Button>
+            </Tooltip>
+          </div>
+        ),
+      })),
+    [customers, handleDeleteClick, router, user]
+  );
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
@@ -306,24 +273,31 @@ export default function CustomersPage() {
           radius="none"
           variant="underlined"
           value={searchQuery}
-          onChange={handleSearchChange}
+          onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full md:w-1/3"
           aria-label="Buscar clientes"
+          isClearable
+          onClear={() => {
+            setSearchQuery("");
+            setPage(1);
+          }}
         />
         <Dropdown>
           <DropdownTrigger>
             <Button
               variant="bordered"
-              className={`rounded-md border-1.5 ${filterKey ? 'bg-gray-200' : ''}`}
+              className={`rounded-md border-1.5 ${filterCustomerType ? "bg-gray-200" : ""}`}
               aria-label="Filtros"
             >
               <IconFilter className="h-4 mr-1" />
-              {filterKey ? `${filterItems.find(item => item.key === filterKey)?.label || "Filtros"}` : "Tipo de Cliente"}
+              {filterCustomerType
+                ? `${filterItems.find((item) => item.key === filterCustomerType)?.label || "Filtros"}`
+                : "Tipo de Cliente"}
             </Button>
           </DropdownTrigger>
-          <DropdownMenu aria-label="Filters" onAction={handleFilterAction}>
+          <DropdownMenu aria-label="Filters" onAction={handleFilterCustomerType}>
             <DropdownSection className="max-h-60 overflow-y-auto">
-              {filterItems.map(item => (
+              {filterItems.map((item) => (
                 <DropdownItem key={item.key} value={item.key}>
                   {item.label}
                 </DropdownItem>
@@ -338,18 +312,14 @@ export default function CustomersPage() {
 
       {/* Tabla de Clientes */}
       <div className="overflow-x-auto border rounded-md">
-        {customersLoading ? (
+        {loading ? (
           <div className="flex justify-center items-center p-6">
             <Spinner size="lg" />
           </div>
-        ) : customersError ? (
-          <div className="text-red-500 text-center p-6">
-            {customersError}
-          </div>
-        ) : currentItemsCount === 0 ? (
-          <div className="text-center p-6">
-            No hay clientes para mostrar.
-          </div>
+        ) : fetchError ? (
+          <div className="text-red-500 text-center p-6">{fetchError}</div>
+        ) : customers.length === 0 ? (
+          <div className="text-center p-6">No hay clientes para mostrar.</div>
         ) : (
           <Table
             aria-label="Clientes"
@@ -369,41 +339,37 @@ export default function CustomersPage() {
                 </TableColumn>
               )}
             </TableHeader>
-            <TableBody items={currentItems}>
-              {(item) => (
+            <TableBody>
+              {rows.map((item) => (
                 <TableRow key={item.id}>
-                  {(columnKey) => {
-                    if (columnKey === 'id') {
-                      return (
-                        <TableCell>
-                          {getKeyValue(item, columnKey)}
-                        </TableCell>
-                      );
+                  {columns.map((column) => {
+                    if (column.key === "actions") {
+                      return <TableCell key={column.key}>{item.actions}</TableCell>;
                     }
                     return (
-                      <TableCell className="min-w-[80px] sm:min-w-[100px]">
-                        {getKeyValue(item, columnKey)}
+                      <TableCell key={column.key} className="min-w-[80px] sm:min-w-[100px]">
+                        {item[column.key]}
                       </TableCell>
                     );
-                  }}
+                  })}
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
         )}
       </div>
 
-      {/* Paginación y Contador */}
-      {!customersLoading && !customersError && currentItemsCount !== 0 && (
-        <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
+      {/* Paginación */}
+      {!loading && !fetchError && customers.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-4">
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
-            Mostrando {currentItemsCount} de {totalItems} clientes
+            Mostrando {customers.length} de {totalCount} clientes
           </p>
           <Pagination
             total={totalPages}
             initialPage={page}
             page={page}
-            onChange={handlePageChangeFunc}
+            onChange={handlePageChange}
             size="sm"
             showShadow={true}
             color="primary"
@@ -419,24 +385,15 @@ export default function CustomersPage() {
               <ModalHeader className="flex flex-col gap-1">Confirmar Eliminación</ModalHeader>
               <ModalBody>
                 <p>
-                  ¿Estás seguro de que deseas eliminar al cliente <strong>{customerToDelete?.name}</strong>?
-                  Esta acción no se puede deshacer.
+                  ¿Estás seguro de que deseas eliminar al cliente <strong>{customerToDelete?.name}</strong>? Esta
+                  acción no se puede deshacer.
                 </p>
               </ModalBody>
               <ModalFooter>
-                <Button
-                  color="danger"
-                  variant="light"
-                  onPress={onClose}
-                  disabled={deleting}
-                >
+                <Button color="danger" variant="light" onPress={onClose} disabled={deleting}>
                   Cancelar
                 </Button>
-                <Button
-                  color="primary"
-                  onPress={handleDeleteCustomer}
-                  disabled={deleting}
-                >
+                <Button color="primary" onPress={handleDeleteCustomer} disabled={deleting}>
                   {deleting ? <Spinner size="sm" /> : "Eliminar"}
                 </Button>
               </ModalFooter>
