@@ -30,7 +30,7 @@ const useExpenses = (filters = {}, offset = 0, limit = 100000) => {
           Authorization: `Token ${token}`,
         },
       });
-      setExpenses(response.data.results);
+      setExpenses(response.data.results || []);
       setTotalCount(response.data.count);
     } catch (err) {
       console.error(err);

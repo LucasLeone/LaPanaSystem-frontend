@@ -23,7 +23,7 @@ const useSuppliers = (offset = 0, limit = 100000) => {
           limit: limit,
         },
       });
-      setSuppliers(response.data.results);
+      setSuppliers(response.data.results || []);
       setTotalCount(response.data.count);
     } catch (err) {
       console.error(err);

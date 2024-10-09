@@ -31,7 +31,7 @@ const useProducts = (filters = {}, offset = 0, limit = 100000) => {
         },
       });
 
-      setProducts(response.data.results);
+      setProducts(response.data.results || []);
       setTotalCount(response.data.count);
     } catch (err) {
       console.error(err);

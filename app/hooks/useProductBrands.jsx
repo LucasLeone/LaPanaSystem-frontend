@@ -29,7 +29,7 @@ const useProductBrands = (offset = 0, limit = 100000) => {
           limit: limit,
         },
       });
-      setProductBrands(response.data.results);
+      setProductBrands(response.data.results || []);
       setTotalCount(response.data.count);
     } catch (err) {
       console.error('Error al cargar las marcas:', err);

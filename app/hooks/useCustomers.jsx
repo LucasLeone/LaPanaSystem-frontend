@@ -23,7 +23,7 @@ const useCustomers = (offset = 0, limit = 100000) => {
           limit: limit,
         },
       });
-      setCustomers(response.data.results);
+      setCustomers(response.data.results || []);
       setTotalCount(response.data.count);
     } catch (err) {
       console.error(err);

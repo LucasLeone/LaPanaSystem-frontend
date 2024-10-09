@@ -31,7 +31,7 @@ const useSales = (filters = {}, offset = 0, limit = 0) => {
         },
       });
 
-      setSales(response.data.results);
+      setSales(response.data.results || []);
       setTotalCount(response.data.count);
     } catch (err) {
       console.error(err);

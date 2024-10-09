@@ -31,7 +31,7 @@ const useReturns = (filters = {}, offset = 0, limit = 0) => {
         },
       });
 
-      setReturns(response.data.results);
+      setReturns(response.data.results || []);
       setTotalCount(response.data.count);
     } catch (err) {
       console.error(err);

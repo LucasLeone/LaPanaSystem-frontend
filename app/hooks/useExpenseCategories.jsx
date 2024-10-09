@@ -23,7 +23,7 @@ const useExpenseCategories = (offset = 0, limit = 100000) => {
           limit: limit,
         },
       });
-      setExpenseCategories(response.data.results);
+      setExpenseCategories(response.data.results || []);
       setTotalCount(response.data.count);
     } catch (err) {
       console.error(err);

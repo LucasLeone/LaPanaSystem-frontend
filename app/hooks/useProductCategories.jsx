@@ -29,7 +29,7 @@ const useProductCategories = (offset = 0, limit = 100000) => {
           limit: limit,
         },
       });
-      setCategories(response.data.results);
+      setCategories(response.data.results || []);
       setTotalCount(response.data.count);
     } catch (err) {
       console.error('Error al cargar las categorías:', err);
