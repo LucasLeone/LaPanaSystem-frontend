@@ -296,9 +296,8 @@ export default function ProductsPage() {
 
       return (
         <div
-          className={`flex items-center ${
-            isSortable ? "cursor-pointer" : ""
-          }`}
+          className={`flex items-center ${isSortable ? "cursor-pointer" : ""
+            }`}
           onClick={() => isSortable && handleSortChange(column.key)}
           aria-sort={isSorted ? direction : "none"}
         >
@@ -502,24 +501,6 @@ export default function ProductsPage() {
                         </AutocompleteItem>
                       ))}
                     </Autocomplete>
-                  </div>
-
-                  {/* Filtro de Búsqueda Específica */}
-                  <div>
-                    <Input
-                      label="Buscar Específicamente"
-                      placeholder="Nombre o Código de Barras"
-                      type="text"
-                      value={tempFilterSearch}
-                      onChange={(e) => setTempFilterSearch(e.target.value)}
-                      className="w-full"
-                      aria-label="Filtro de Búsqueda Específica"
-                      variant="underlined"
-                      isClearable
-                      startContent={
-                        <IconSearch className="h-4 text-default-400" />
-                      }
-                    />
                   </div>
                 </div>
               </ModalBody>
