@@ -7,6 +7,8 @@ import {
   Code,
   Select,
   SelectItem,
+  Autocomplete,
+  AutocompleteItem,
   Tooltip,
   Textarea
 } from "@nextui-org/react";
@@ -58,8 +60,8 @@ export default function EditProductPage() {
       setWeight(product.weight ? product.weight.toString() : "");
       setWeightUnit(product.weight_unit || null);
       setDescription(product.description || "");
-      setCategory(product.category_details?.id || null);
-      setBrand(product.brand_details?.id || null);
+      setCategory(product.category_details?.id ? product.category_details.id.toString() : null);
+      setBrand(product.brand_details?.id ? product.brand_details.id.toString() : null);
       setInitialLoading(false);
     }
   }, [product]);
@@ -279,44 +281,38 @@ export default function EditProductPage() {
         />
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 space-y-2">
-            <Select
+            <Autocomplete
               aria-label="Categoría del Producto"
               label="Categoría"
               placeholder="Seleccione una categoría"
-              selectedKeys={category ? [category.toString()] : []}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0];
-                setCategory(selected ? parseInt(selected, 10) : null);
-              }}
+              selectedKey={category ? category.toString() : null}
+              onSelectionChange={setCategory}
               variant="underlined"
               isRequired
             >
               {categories.map((cat) => (
-                <SelectItem key={cat.id.toString()} value={cat.id.toString()}>
+                <AutocompleteItem key={cat.id.toString()} value={cat.id.toString()}>
                   {cat.name}
-                </SelectItem>
+                </AutocompleteItem>
               ))}
-            </Select>
+            </Autocomplete>
           </div>
           <div className="flex-1 space-y-2">
-            <Select
+            <Autocomplete
               aria-label="Marca del Producto"
               label="Marca"
               placeholder="Seleccione una marca"
-              selectedKeys={brand ? [brand.toString()] : []}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0];
-                setBrand(selected ? parseInt(selected, 10) : null);
-              }}
+              selectedKey={brand ? brand.toString() : null}
+              onSelectionChange={setBrand}
               variant="underlined"
               isRequired
             >
               {brands.map((br) => (
-                <SelectItem key={br.id.toString()} value={br.id.toString()}>
+                <AutocompleteItem key={br.id.toString()} value={br.id.toString()}>
                   {br.name}
-                </SelectItem>
+                </AutocompleteItem>
               ))}
-            </Select>
+            </Autocomplete>
           </div>
         </div>
       </div>

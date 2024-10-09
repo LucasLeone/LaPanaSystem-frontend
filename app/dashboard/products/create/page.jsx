@@ -7,6 +7,8 @@ import {
   Code,
   Select,
   SelectItem,
+  Autocomplete,
+  AutocompleteItem,
   Link,
   Tooltip,
   Textarea
@@ -249,7 +251,7 @@ export default function CreateProductPage() {
         />
         <div className="flex flex-col md:flex-row md:gap-4">
           <div className="flex-1 space-y-2">
-            <Select
+            <Autocomplete
               aria-label="Categoría del Producto"
               label="Categoría"
               placeholder="Seleccione una categoría"
@@ -262,14 +264,14 @@ export default function CreateProductPage() {
               isRequired
             >
               {categories.map((cat) => (
-                <SelectItem key={cat.id.toString()} value={cat.id.toString()}>
+                <AutocompleteItem key={cat.id.toString()} value={cat.id.toString()}>
                   {cat.name}
-                </SelectItem>
+                </AutocompleteItem>
               ))}
-            </Select>
+            </Autocomplete>
           </div>
           <div className="flex-1 space-y-2">
-            <Select
+            <Autocomplete
               aria-label="Marca del Producto"
               label="Marca"
               placeholder="Seleccione una marca"
@@ -282,11 +284,11 @@ export default function CreateProductPage() {
               isRequired
             >
               {brands.map((br) => (
-                <SelectItem key={br.id.toString()} value={br.id.toString()}>
+                <AutocompleteItem key={br.id.toString()} value={br.id.toString()}>
                   {br.name}
-                </SelectItem>
+                </AutocompleteItem>
               ))}
-            </Select>
+            </Autocomplete>
           </div>
         </div>
       </div>
