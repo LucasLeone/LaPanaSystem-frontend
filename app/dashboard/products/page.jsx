@@ -326,6 +326,20 @@ export default function ProductsPage() {
               Exportar
             </Button>
           </Tooltip>
+          <Tooltip content="Listar marcas">
+            <Link href="/dashboard/products/brands">
+              <Button className="rounded-md bg-black text-white">
+                Marcas
+              </Button>
+            </Link>
+          </Tooltip>
+          <Tooltip content="Listar categorías">
+            <Link href="/dashboard/products/categories">
+              <Button className="rounded-md bg-black text-white">
+                Categorías
+              </Button>
+            </Link>
+          </Tooltip>
           <Tooltip content="Agregar nuevo producto">
             <Link href="/dashboard/products/create">
               <Button className="rounded-md bg-black text-white">
