@@ -2,41 +2,37 @@
 
 import {
   Button,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
-  getKeyValue,
   Input,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-  Pagination,
   Spinner,
+  Link,
   Tooltip,
-  DropdownSection,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Pagination,
   Modal,
   ModalContent,
   ModalHeader,
   ModalBody,
   ModalFooter,
   useDisclosure,
-  Link,
+  Autocomplete,
+  AutocompleteItem,
 } from "@nextui-org/react";
 import {
   IconDownload,
   IconPlus,
   IconSearch,
   IconFilter,
-  IconEdit,
+  IconTrash,
   IconChevronUp,
   IconChevronDown,
-  IconTrash,
+  IconEdit,
 } from "@tabler/icons-react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
@@ -45,59 +41,172 @@ import useExpenseCategories from "@/app/hooks/useExpenseCategories";
 import useSuppliers from "@/app/hooks/useSuppliers";
 
 export default function ExpensesPage() {
-  const {
-    expenses,
-    loading: expensesLoading,
-    error: expensesError,
-    refetch: refetchExpenses,
-  } = useExpenses();
+  const router = useRouter();
 
-  const {
-    expenseCategories: categories,
-    categoriesLoading,
-    categoriesError,
-  } = useExpenseCategories();
+  // Estados para filtros temporales
+  const [tempFilterCategory, setTempFilterCategory] = useState(null);
+  const [tempFilterSupplier, setTempFilterSupplier] = useState(null);
+  const [tempFilterSearch, setTempFilterSearch] = useState("");
 
-  const {
-    suppliers,
-    suppliersLoading,
-    suppliersError,
-  } = useSuppliers();
+  // Estado para filtros aplicados
+  const [filters, setFilters] = useState({});
 
-  const hasInitialError = expensesError || categoriesError || suppliersError;
-
-  const rowsPerPage = 10;
-  const [page, setPage] = useState(1);
-
-  const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState(null);
-
-  const [filterCategory, setFilterCategory] = useState(null);
-  const [filterSupplier, setFilterSupplier] = useState(null);
+  // Estado para búsqueda y ordenamiento
   const [searchQuery, setSearchQuery] = useState("");
-
-  const [expenseToDelete, setExpenseToDelete] = useState(null);
-
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   const [sortDescriptor, setSortDescriptor] = useState({
     column: null,
     direction: null,
   });
 
-  const [user, setUser] = useState(null);
+  // Paginación
+  const rowsPerPage = 10;
+  const [page, setPage] = useState(1);
 
-  const router = useRouter();
+  // Estados para eliminación de gastos
+  const [expenseToDelete, setExpenseToDelete] = useState(null);
+
+  // Control de modales
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isFilterModalOpen,
+    onOpen: onFilterModalOpen,
+    onClose: onFilterModalClose,
+  } = useDisclosure();
 
-  const formatAmount = useCallback((amount) => {
-    if (amount == null || isNaN(amount)) return "";
-    return parseFloat(amount).toLocaleString("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+  const {
+    expenseCategories: categories,
+    loading: categoriesLoading,
+    error: categoriesError,
+  } = useExpenseCategories();
+
+  const {
+    suppliers,
+    loading: suppliersLoading,
+    error: suppliersError,
+  } = useSuppliers();
+
+  // Implementación del debouncing para la búsqueda
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500); // 500ms de retraso
+
+    // Limpiar el timeout si el componente se desmonta o si searchQuery cambia antes de 500ms
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
+
+  // Memoización de filtros aplicados usando debouncedSearchQuery y sortDescriptor
+  const appliedFilters = useMemo(() => {
+    const newFilters = { ...filters };
+
+    if (debouncedSearchQuery) {
+      newFilters.search = debouncedSearchQuery;
+    }
+
+    if (sortDescriptor.column) {
+      const columnKeyToField = {
+        id: "id",
+        date: "date",
+        amount: "amount",
+        description: "description",
+        category: "category__name",
+        supplier: "supplier__name",
+      };
+      const backendField = columnKeyToField[sortDescriptor.column] || sortDescriptor.column;
+      newFilters.ordering =
+        sortDescriptor.direction === "ascending"
+          ? backendField
+          : `-${backendField}`;
+    }
+
+    return newFilters;
+  }, [filters, debouncedSearchQuery, sortDescriptor]);
+
+  const {
+    expenses,
+    totalCount,
+    loading: expensesLoading,
+    error: expensesError,
+    refetch: fetchExpenses
+  } = useExpenses(appliedFilters, (page - 1) * rowsPerPage);
+
+  // Función para aplicar los filtros
+  const applyFilters = useCallback(() => {
+    const newFilters = {};
+
+    if (tempFilterCategory) {
+      newFilters.category = tempFilterCategory;
+    }
+    if (tempFilterSupplier) {
+      newFilters.supplier = tempFilterSupplier;
+    }
+    if (tempFilterSearch !== "") {
+      newFilters.search = tempFilterSearch;
+    }
+
+    setFilters(newFilters);
+    setPage(1);
+    onFilterModalClose();
+  }, [tempFilterCategory, tempFilterSupplier, tempFilterSearch, onFilterModalClose]);
+
+  const clearFilters = useCallback(() => {
+    setTempFilterCategory(null);
+    setTempFilterSupplier(null);
+    setTempFilterSearch("");
+    setSearchQuery("");
+    setSortDescriptor({
+      column: null,
+      direction: null,
     });
+    setFilters({});
   }, []);
+
+  // Manejo de búsqueda
+  const handleSearchChange = useCallback((e) => {
+    setSearchQuery(e.target.value);
+    setPage(1);
+  }, []);
+
+  // Manejo de eliminación de gastos
+  const handleDeleteClick = useCallback(
+    (expense) => {
+      setExpenseToDelete(expense);
+      onOpen();
+    },
+    [onOpen]
+  );
+
+  const handleDeleteExpense = useCallback(async () => {
+    if (!expenseToDelete) return;
+
+    const token = Cookies.get("access_token");
+    try {
+      await api.delete(`/expenses/${expenseToDelete.id}/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      fetchExpenses(appliedFilters, (page - 1) * rowsPerPage, rowsPerPage);
+      onClose();
+    } catch (error) {
+      console.error("Error al eliminar gasto:", error);
+      // Puedes manejar el error de manera más específica aquí
+    }
+  }, [expenseToDelete, fetchExpenses, appliedFilters, page, onClose]);
+
+  // Definición de columnas de la tabla
+  const columns = [
+    { key: "id", label: "#", sortable: true },
+    { key: "date", label: "Fecha", sortable: true },
+    { key: "amount", label: "Monto", sortable: true },
+    { key: "description", label: "Descripción", sortable: false },
+    { key: "category", label: "Categoría", sortable: true },
+    { key: "supplier", label: "Proveedor", sortable: true },
+    { key: "actions", label: "Acciones", sortable: false },
+  ];
 
   const formatDate = useCallback((dateString) => {
     if (!dateString) return "";
@@ -109,169 +218,23 @@ export default function ExpensesPage() {
     });
   }, []);
 
-  useEffect(() => {
-    const userData = Cookies.get("user");
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-        Cookies.remove("user");
-      }
-    }
-  }, []);
-
-  const handleFilterCategory = useCallback((key) => {
-    if (key === "none") {
-      setFilterCategory(null);
-    } else {
-      setFilterCategory(parseInt(key, 10));
-    }
-    setPage(1);
-  }, []);
-
-  const handleFilterSupplier = useCallback((key) => {
-    if (key === "none") {
-      setFilterSupplier(null);
-    } else {
-      setFilterSupplier(parseInt(key, 10));
-    }
-    setPage(1);
-  }, []);
-
-  const handleSearchChange = useCallback((e) => {
-    setSearchQuery(e.target.value);
-    setPage(1);
-  }, []);
-
-  const handleDeleteClick = useCallback((expense) => {
-    setExpenseToDelete(expense);
-    onOpen();
-  }, [onOpen]);
-
-  const handleDeleteExpense = useCallback(async () => {
-    if (!expenseToDelete) return;
-
-    setDeleting(true);
-    setError(null);
-    const token = Cookies.get("access_token");
-    try {
-      await api.delete(`/expenses/${expenseToDelete.id}/`, {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      });
-      onClose();
-      refetchExpenses();
-    } catch (error) {
-      console.error("Error al eliminar gasto:", error);
-      setError("Error al eliminar el gasto.");
-    } finally {
-      setDeleting(false);
-    }
-  }, [expenseToDelete, onClose, refetchExpenses]);
-
-  const columns = [
-    { key: "id", label: "#", sortable: true },
-    { key: "date", label: "Fecha", sortable: true },
-    { key: "amount", label: "Monto", sortable: true },
-    { key: "description", label: "Descripción", sortable: false },
-    { key: "category", label: "Categoría", sortable: true },
-    { key: "supplier", label: "Proveedor", sortable: true },
-    { key: "actions", label: "Acciones", sortable: false },
-  ];
-
-  const sortedExpenses = useMemo(() => {
-    if (!sortDescriptor.column) return [...expenses];
-    const sorted = [...expenses].sort((a, b) => {
-      let aValue, bValue;
-
-      if (sortDescriptor.column === "category") {
-        aValue = a.category_details?.name || "";
-        bValue = b.category_details?.name || "";
-      } else if (sortDescriptor.column === "supplier") {
-        aValue = a.supplier_details?.name || "";
-        bValue = b.supplier_details?.name || "";
-      } else if (sortDescriptor.column === "amount") {
-        aValue = a.amount != null ? parseFloat(a.amount) : 0;
-        bValue = b.amount != null ? parseFloat(b.amount) : 0;
-      } else if (sortDescriptor.column === "date") {
-        aValue = a.date != null ? new Date(a.date) : new Date(0);
-        bValue = b.date != null ? new Date(b.date) : new Date(0);
-      } else {
-        aValue = a[sortDescriptor.column] != null ? a[sortDescriptor.column] : "";
-        bValue = b[sortDescriptor.column] != null ? b[sortDescriptor.column] : "";
-      }
-
-      const aType = typeof aValue;
-      const bType = typeof bValue;
-
-      if (aType === "string" && bType === "string") {
-        return sortDescriptor.direction === "ascending"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
-
-      if (aType === "number" && bType === "number") {
-        return sortDescriptor.direction === "ascending"
-          ? aValue - bValue
-          : bValue - aValue;
-      }
-
-      if (aValue instanceof Date && bValue instanceof Date) {
-        return sortDescriptor.direction === "ascending"
-          ? aValue - bValue
-          : bValue - aValue;
-      }
-
-      const aStr = String(aValue);
-      const bStr = String(bValue);
-      return sortDescriptor.direction === "ascending"
-        ? aStr.localeCompare(bStr)
-        : bStr.localeCompare(aStr);
+  const formatAmount = useCallback((amount) => {
+    if (amount == null || isNaN(amount)) return "";
+    return parseFloat(amount).toLocaleString("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     });
-    return sorted;
-  }, [expenses, sortDescriptor]);
+  }, []);
 
-  const filteredExpenses = useMemo(() => {
-    let filtered = [...sortedExpenses];
-
-    if (filterCategory) {
-      filtered = filtered.filter(
-        (expense) =>
-          expense.category_details && expense.category_details.id === filterCategory
-      );
-    }
-
-    if (filterSupplier) {
-      filtered = filtered.filter(
-        (expense) =>
-          expense.supplier_details && expense.supplier_details.id === filterSupplier
-      );
-    }
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(
-        (expense) =>
-          (expense.description &&
-            expense.description.toLowerCase().includes(query)) ||
-          (expense.category_details?.name &&
-            expense.category_details.name.toLowerCase().includes(query)) ||
-          (expense.supplier_details?.name &&
-            expense.supplier_details.name.toLowerCase().includes(query))
-      );
-    }
-
-    return filtered;
-  }, [sortedExpenses, filterCategory, filterSupplier, searchQuery]);
-
+  // Generación de filas para la tabla
   const rows = useMemo(
     () =>
-      filteredExpenses.map((expense) => ({
+      expenses.map((expense) => ({
         id: expense.id,
-        amount: formatAmount(expense.amount),
         date: formatDate(expense.date),
+        amount: formatAmount(expense.amount),
         description: expense.description,
         category: expense.category_details?.name || "",
         supplier: expense.supplier_details?.name || "",
@@ -299,7 +262,6 @@ export default function ExpensesPage() {
                 color="danger"
                 onPress={() => handleDeleteClick(expense)}
                 aria-label={`Eliminar gasto ${expense.description}`}
-                isDisabled={user?.user_type !== "ADMIN"}
               >
                 <IconTrash className="h-5" />
               </Button>
@@ -307,25 +269,10 @@ export default function ExpensesPage() {
           </div>
         ),
       })),
-    [filteredExpenses, handleDeleteClick, router, formatAmount, formatDate, user]
+    [expenses, handleDeleteClick, router]
   );
 
-  const totalItems = rows.length;
-  const totalPages = Math.ceil(totalItems / rowsPerPage);
-
-  useEffect(() => {
-    if (page > totalPages && totalPages > 0) {
-      setPage(1);
-    }
-  }, [totalPages, page]);
-
-  const currentItems = useMemo(() => {
-    const startIdx = (page - 1) * rowsPerPage;
-    const endIdx = startIdx + rowsPerPage;
-    return rows.slice(startIdx, endIdx);
-  }, [rows, page, rowsPerPage]);
-
-  const currentItemsCount = currentItems.length;
+  const totalPages = Math.ceil(totalCount / rowsPerPage);
 
   const handlePageChangeFunc = useCallback((newPage) => {
     setPage(newPage);
@@ -356,20 +303,18 @@ export default function ExpensesPage() {
 
       return (
         <div
-          className={`flex items-center ${
-            isSortable ? "cursor-pointer" : ""
-          }`}
+          className={`flex items-center ${isSortable ? "cursor-pointer" : ""
+            }`}
           onClick={() => isSortable && handleSortChange(column.key)}
           aria-sort={isSorted ? direction : "none"}
         >
           <span>{column.label}</span>
-          {isSortable && (
-            direction === "ascending" ? (
+          {isSortable &&
+            (direction === "ascending" ? (
               <IconChevronUp className="ml-1 h-4 w-4" />
             ) : direction === "descending" ? (
               <IconChevronDown className="ml-1 h-4 w-4" />
-            ) : null
-          )}
+            ) : null)}
         </div>
       );
     },
@@ -413,7 +358,7 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {/* Barra de Búsqueda y Filtros */}
+      {/* Búsqueda y Filtros */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
         <Input
           placeholder="Buscar gastos"
@@ -430,87 +375,14 @@ export default function ExpensesPage() {
           aria-label="Buscar gastos"
           isClearable={true}
         />
-        <div className="flex space-x-4">
-          {/* Filtro por Categoría */}
-          <Dropdown>
-            <DropdownTrigger>
-              <Button
-                variant="bordered"
-                className={`rounded-md border-1.5 ${
-                  filterCategory ? "bg-gray-200" : ""
-                }`}
-                aria-label="Filtros de Categoría"
-              >
-                <IconFilter className="h-4 mr-1" />
-                {filterCategory
-                  ? `${
-                      categories.find((item) => item.id === filterCategory)
-                        ?.name || "Categoría"
-                    }`
-                  : "Categoría"}
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu
-              aria-label="Filtros de Categoría"
-              onAction={handleFilterCategory}
-            >
-              <DropdownSection className="max-h-60 overflow-y-auto">
-                {categories.map((item) => (
-                  <DropdownItem key={item.id} value={item.id}>
-                    {item.name}
-                  </DropdownItem>
-                ))}
-              </DropdownSection>
-              <DropdownItem
-                key="none-category"
-                value="none"
-                className="border-t-1 rounded-t-none"
-              >
-                Quitar Filtro de Categoría
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-
-          {/* Filtro por Proveedor */}
-          <Dropdown>
-            <DropdownTrigger>
-              <Button
-                variant="bordered"
-                className={`rounded-md border-1.5 ${
-                  filterSupplier ? "bg-gray-200" : ""
-                }`}
-                aria-label="Filtros de Proveedor"
-              >
-                <IconFilter className="h-4 mr-1" />
-                {filterSupplier
-                  ? `${
-                      suppliers.find((item) => item.id === filterSupplier)
-                        ?.name || "Proveedor"
-                    }`
-                  : "Proveedor"}
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu
-              aria-label="Filtros de Proveedor"
-              onAction={handleFilterSupplier}
-            >
-              <DropdownSection className="max-h-60 overflow-y-auto">
-                {suppliers.map((item) => (
-                  <DropdownItem key={item.id} value={item.id}>
-                    {item.name}
-                  </DropdownItem>
-                ))}
-              </DropdownSection>
-              <DropdownItem
-                key="none-supplier"
-                value="none"
-                className="border-t-1 rounded-t-none"
-              >
-                Quitar Filtro de Proveedor
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-        </div>
+        <Button
+          variant="bordered"
+          className="rounded-md border-1.5"
+          onPress={onFilterModalOpen}
+        >
+          <IconFilter className="h-4 mr-1" />
+          Filtros
+        </Button>
       </div>
 
       {/* Tabla de Gastos */}
@@ -519,13 +391,11 @@ export default function ExpensesPage() {
           <div className="flex justify-center items-center p-6">
             <Spinner size="lg" />
           </div>
-        ) : hasInitialError ? (
+        ) : expensesError || categoriesError || suppliersError ? (
           <div className="text-red-500 text-center p-6">
             {expensesError || categoriesError || suppliersError}
           </div>
-        ) : error ? (
-          <div className="text-red-500 text-center p-6">{error}</div>
-        ) : currentItemsCount === 0 ? (
+        ) : expenses.length === 0 ? (
           <div className="text-center p-6">No hay gastos para mostrar.</div>
         ) : (
           <Table
@@ -546,40 +416,39 @@ export default function ExpensesPage() {
                 </TableColumn>
               )}
             </TableHeader>
-            <TableBody items={currentItems}>
-              {(item) => (
+            <TableBody>
+              {rows.map((item) => (
                 <TableRow key={item.id}>
-                  {(columnKey) => {
-                    if (columnKey === "id") {
-                      return <TableCell>{item.id}</TableCell>;
+                  {columns.map((column) => {
+                    if (column.key === "id") {
+                      return <TableCell key={column.key}>{item.id}</TableCell>;
                     }
-                    if (columnKey === "actions") {
-                      return <TableCell>{item.actions}</TableCell>;
+                    if (column.key === "actions") {
+                      return <TableCell key={column.key}>{item.actions}</TableCell>;
                     }
                     return (
-                      <TableCell className="min-w-[80px] sm:min-w-[100px]">
-                        {getKeyValue(item, columnKey)}
+                      <TableCell
+                        key={column.key}
+                        className="min-w-[80px] sm:min-w-[100px]"
+                      >
+                        {item[column.key]}
                       </TableCell>
                     );
-                  }}
+                  })}
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
         )}
       </div>
 
-      {/* Paginación y Contador */}
+      {/* Paginación */}
       {!expensesLoading &&
-        !categoriesLoading &&
-        !suppliersLoading &&
         !expensesError &&
-        !categoriesError &&
-        !suppliersError &&
-        currentItemsCount !== 0 && (
+        expenses.length !== 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between mt-4">
             <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
-              Mostrando {currentItemsCount} de {totalItems} gastos
+              Mostrando {expenses.length} de {totalCount} gastos
             </p>
             <Pagination
               total={totalPages}
@@ -592,6 +461,84 @@ export default function ExpensesPage() {
             />
           </div>
         )}
+
+      {/* Modal de Filtros */}
+      <Modal
+        isOpen={isFilterModalOpen}
+        onOpenChange={onFilterModalClose}
+        aria-labelledby="modal-filters-title"
+        placement="center"
+        size="lg"
+      >
+        <ModalContent>
+          {() => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                Filtros de Gastos
+              </ModalHeader>
+              <ModalBody>
+                <div className="flex flex-col space-y-4">
+                  {/* Filtro de Categoría con Autocomplete */}
+                  <div>
+                    <Autocomplete
+                      label="Buscar y seleccionar categoría"
+                      placeholder="Escribe para buscar"
+                      className="w-full"
+                      aria-label="Filtro de Categoría"
+                      onClear={() => setTempFilterCategory(null)}
+                      onSelectionChange={(value) => setTempFilterCategory(value)}
+                      selectedKey={tempFilterCategory}
+                      variant="underlined"
+                      isClearable
+                    >
+                      {categories.map((category) => (
+                        <AutocompleteItem
+                          key={category.id.toString()}
+                          value={category.id.toString()}
+                        >
+                          {category.name}
+                        </AutocompleteItem>
+                      ))}
+                    </Autocomplete>
+                  </div>
+
+                  {/* Filtro de Proveedor con Autocomplete */}
+                  <div>
+                    <Autocomplete
+                      label="Buscar y seleccionar proveedor"
+                      placeholder="Escribe para buscar"
+                      className="w-full"
+                      aria-label="Filtro de Proveedor"
+                      onClear={() => setTempFilterSupplier(null)}
+                      onSelectionChange={(value) => setTempFilterSupplier(value)}
+                      selectedKey={tempFilterSupplier}
+                      variant="underlined"
+                      isClearable
+                    >
+                      {suppliers.map((supplier) => (
+                        <AutocompleteItem
+                          key={supplier.id.toString()}
+                          value={supplier.id.toString()}
+                        >
+                          {supplier.name}
+                        </AutocompleteItem>
+                      ))}
+                    </Autocomplete>
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" onPress={clearFilters} color="warning">
+                  Limpiar Filtros
+                </Button>
+                <Button onPress={applyFilters} color="primary">
+                  Aplicar Filtros
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
 
       {/* Modal de Confirmación de Eliminación */}
       <Modal
@@ -618,16 +565,16 @@ export default function ExpensesPage() {
                   color="danger"
                   variant="light"
                   onPress={onClose}
-                  disabled={deleting}
+                  disabled={false}
                 >
                   Cancelar
                 </Button>
                 <Button
                   color="primary"
                   onPress={handleDeleteExpense}
-                  disabled={deleting}
+                  disabled={false}
                 >
-                  {deleting ? <Spinner size="sm" /> : "Eliminar"}
+                  Eliminar
                 </Button>
               </ModalFooter>
             </>
