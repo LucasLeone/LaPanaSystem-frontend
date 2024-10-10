@@ -101,10 +101,10 @@ export default function SuppliersPage() {
   }, [supplierToDelete, onClose, fetchSuppliers]);
 
   const columns = [
-    { key: 'id', label: '#', sortable: true },
-    { key: 'name', label: 'Nombre', sortable: true },
+    { key: 'id', label: '#', sortable: false },
+    { key: 'name', label: 'Nombre', sortable: false },
     { key: 'phone_number', label: 'Teléfono', sortable: false },
-    { key: 'email', label: 'Email', sortable: true },
+    { key: 'email', label: 'Email', sortable: false },
     { key: 'address', label: 'Dirección', sortable: false },
     { key: 'actions', label: 'Acciones', sortable: false },
   ];

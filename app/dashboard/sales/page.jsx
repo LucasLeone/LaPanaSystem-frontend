@@ -444,6 +444,7 @@ export default function SalesPage() {
           className="w-full md:w-1/3"
           aria-label="Buscar ventas"
           isClearable={true}
+          isDisabled
         />
         <Tooltip content="Aplicar Filtros">
           <Button
@@ -815,7 +816,7 @@ export default function SalesPage() {
                 Detalles de la Venta #{saleToView?.id}
               </ModalHeader>
               <ModalBody>
-                <Accordion>
+                <Accordion defaultExpandedKeys={["2"]}>
                   <AccordionItem
                     key="1"
                     aria-label="Detalles Generales"

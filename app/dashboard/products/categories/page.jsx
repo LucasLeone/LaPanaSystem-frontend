@@ -108,8 +108,8 @@ export default function CategoriesPage() {
 
   const columns = useMemo(
     () => [
-      { key: "id", label: "#", sortable: true },
-      { key: "name", label: "Nombre", sortable: true },
+      { key: "id", label: "#", sortable: false },
+      { key: "name", label: "Nombre", sortable: false },
       { key: "description", label: "Descripción", sortable: false },
       { key: "actions", label: "Acciones", sortable: false },
     ],

@@ -653,7 +653,7 @@ export default function ReturnsPage() {
                 Detalles de la Devolución #{returnToView?.id}
               </ModalHeader>
               <ModalBody>
-                <Accordion>
+                <Accordion defaultExpandedKeys={["2"]}>
                   <AccordionItem
                     key="1"
                     aria-label="Detalles Generales"
