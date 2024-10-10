@@ -195,11 +195,7 @@ export default function CreateExpensePage() {
                 aria-label="Categoría del Gasto"
                 label="Categoría"
                 placeholder="Seleccione una categoría"
-                selectedKey={category ? category.toString() : []}
-                onSelectionChange={(keys) => {
-                  const selected = Array.from(keys)[0];
-                  setCategory(selected ? parseInt(selected, 10) : null);
-                }}
+                onSelectionChange={setCategory}
                 variant="underlined"
                 isRequired
               >
@@ -216,11 +212,7 @@ export default function CreateExpensePage() {
                 aria-label="Proveedor del Gasto"
                 label="Proveedor"
                 placeholder="Seleccione un proveedor"
-                selectedKey={supplier ? supplier.toString() : []}
-                onSelectionChange={(keys) => {
-                  const selected = Array.from(keys)[0];
-                  setSupplier(selected ? parseInt(selected, 10) : null);
-                }}
+                onSelectionChange={setSupplier}
                 variant="underlined"
                 isRequired
               >

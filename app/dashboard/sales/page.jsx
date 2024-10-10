@@ -429,8 +429,8 @@ export default function SalesPage() {
       </div>
 
       {/* Búsqueda y Filtros */}
-      <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
-        <Input
+      <div className="flex flex-col md:flex-row md:justify-end items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
+        {/* <Input
           placeholder="Buscar ventas"
           startContent={<IconSearch className="h-4" />}
           radius="none"
@@ -445,7 +445,7 @@ export default function SalesPage() {
           aria-label="Buscar ventas"
           isClearable={true}
           isDisabled
-        />
+        /> */}
         <Tooltip content="Aplicar Filtros">
           <Button
             variant="bordered"

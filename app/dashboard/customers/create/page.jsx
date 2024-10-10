@@ -24,7 +24,7 @@ export default function CreateCustomerPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [customerType, setCustomerType] = useState("minorista");
+  const [customerType, setCustomerType] = useState("");
 
   const router = useRouter();
 
@@ -41,19 +41,25 @@ export default function CreateCustomerPage() {
     setLoading(true);
     setError(null);
 
-    if (!name || !email || !phone || !address) {
-      setError("Todos los campos son requeridos.");
+    if (!name || !customerType) {
+      setError("El nombre y el tipo de cliente son obligatorios.");
       setLoading(false);
       return;
     }
 
-    if (!isValidEmail(email)) {
+    if (customerType === "mayorista" && !address) {
+      setError("Los clientes mayoristas deben tener una dirección.");
+      setLoading(false);
+      return;
+    }
+
+    if (email && !isValidEmail(email)) {
       setError("Correo electrónico inválido.");
       setLoading(false);
       return;
     }
 
-    if (!isValidPhoneNumber(phone)) {
+    if (phone && !isValidPhoneNumber(phone)) {
       setError("El número de teléfono debe estar en el formato +999999999 y tener entre 9 y 15 dígitos.");
       setLoading(false);
       return;
@@ -64,9 +70,9 @@ export default function CreateCustomerPage() {
       await api.post("/customers/",
         {
           name,
-          email,
-          phone_number: phone,
-          address,
+          email: email || null,
+          phone_number: phone || null,
+          address: address || null,
           customer_type: customerType,
         },
         {
@@ -107,6 +113,7 @@ export default function CreateCustomerPage() {
           onChange={(e) => setName(e.target.value)}
           fullWidth
           variant="underlined"
+          isRequired
         />
         <Input
           label="Correo Electrónico"
@@ -138,10 +145,11 @@ export default function CreateCustomerPage() {
           <label className="block font-medium">Tipo de Cliente</label>
           <Select
             aria-label="Tipo de Cliente"
+            label="Tipo de Cliente"
             value={customerType}
-            onChange={(e) => setCustomerType(e.target.value)}
-            selectedKeys={["minorista"]}
+            onSelectionChange={(value) => setCustomerType(value ? Array.from(value)[0] : '')}
             variant="underlined"
+            isRequired
           >
             <SelectItem key="minorista" value="minorista">Minorista</SelectItem>
             <SelectItem key="mayorista" value="mayorista">Mayorista</SelectItem>
