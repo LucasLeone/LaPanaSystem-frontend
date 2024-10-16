@@ -321,6 +321,7 @@ export default function CreateSalePage() {
                           variant="underlined"
                           isRequired
                           className="min-w-[200px]"
+                          disabledKeys={saleDetails.map((d) => d.product)}
                         >
                           {products.map((prod) => (
                             <AutocompleteItem key={prod.id.toString()} value={prod.id.toString()}>

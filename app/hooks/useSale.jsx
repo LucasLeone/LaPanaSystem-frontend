@@ -13,7 +13,7 @@ const useSale = (saleId) => {
 
     const token = Cookies.get('access_token');
     try {
-      const response = await api.get(`/sales/${id}`, {
+      const response = await api.get(`/sales/${id}/`, {
         headers: {
           Authorization: `Token ${token}`,
         }

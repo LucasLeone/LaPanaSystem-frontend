@@ -348,6 +348,7 @@ export default function EditSalePage() {
                           isRequired
                           className="min-w-[200px]"
                           value={detail.product ? detail.product.toString() : ""}
+                          disabledKeys={saleDetails.map((d) => d.product)}
                         >
                           {products.map((prod) => (
                             <AutocompleteItem key={prod.id.toString()} value={prod.id.toString()}>
