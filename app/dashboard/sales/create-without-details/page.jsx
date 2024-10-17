@@ -11,6 +11,7 @@ import {
   Tooltip,
   Select,
   SelectItem,
+  DatePicker,
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft } from "@tabler/icons-react";
 import { useState, useCallback } from "react";
@@ -18,6 +19,7 @@ import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import useCustomers from "@/app/hooks/useCustomers";
+import {now, getLocalTimeZone} from "@internationalized/date";
 
 const PAYMENT_METHOD_CHOICES = [
   { id: "efectivo", name: "Efectivo" },
@@ -34,7 +36,7 @@ export default function CreateSalePage() {
   const [error, setError] = useState(null);
 
   const [customer, setCustomer] = useState(null);
-  const [date, setDate] = useState(getTodayDate());
+  const [date, setDate] = useState();
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [total, setTotal] = useState("");
   
@@ -86,7 +88,7 @@ export default function CreateSalePage() {
 
     const token = Cookies.get("access_token");
     try {
-      await api.post("/sales/", saleData, {
+      await api.post("/sales/create-fast-sale/", saleData, {
         headers: {
           Authorization: `Token ${token}`,
         },
@@ -135,15 +137,18 @@ export default function CreateSalePage() {
           ))}
         </Autocomplete>
 
-        <Input
+        <DatePicker
           label="Fecha"
           placeholder="Seleccione una fecha (Opcional)"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          onChange={setDate}
           fullWidth
           variant="underlined"
           type="date"
           aria-label="Fecha de la Venta"
+          hideTimeZone
+          showMonthAndYearPickers
+          defaultValue={now(getLocalTimeZone())}
         />
 
         <Select

@@ -11,6 +11,7 @@ import {
   Tooltip,
   Select,
   SelectItem,
+  DatePicker,
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft } from "@tabler/icons-react";
 import { useState, useCallback, useEffect } from "react";
@@ -19,6 +20,7 @@ import Cookies from "js-cookie";
 import { useRouter, useParams } from "next/navigation";
 import useCustomers from "@/app/hooks/useCustomers";
 import useSale from "@/app/hooks/useSale";
+import { parseDateTime } from "@internationalized/date"; // Importa parseDateTime
 
 const PAYMENT_METHOD_CHOICES = [
   { id: "efectivo", name: "Efectivo" },
@@ -28,34 +30,40 @@ const PAYMENT_METHOD_CHOICES = [
   { id: "cuenta_corriente", name: "Cuenta Corriente" },
 ];
 
+// Función para formatear la fecha localmente sin zona horaria
+const formatDateTimeLocal = (date) => {
+  const pad = (num) => String(num).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const seconds = pad(date.getSeconds());
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+};
+
 export default function EditSaleWithoutDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const saleId = params.id;
-  
+
   const { customers, loading: customersLoading, error: customersError } = useCustomers();
   const { sale, loading: saleLoading, error: saleError } = useSale(saleId);
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const [customer, setCustomer] = useState(null);
-  const [date, setDate] = useState(getTodayDate());
+  const [date, setDate] = useState(null); // Inicializar como null
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [total, setTotal] = useState("");
-
-  function getTodayDate() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
 
   useEffect(() => {
     if (sale) {
       setCustomer(sale.customer_details?.id);
-      setDate(sale.date ? sale.date.split("T")[0] : getTodayDate());
+      // Elimina la zona horaria antes de parsear
+      const dateWithoutTimeZone = sale.date ? sale.date.substring(0, 19) : null;
+      setDate(dateWithoutTimeZone ? parseDateTime(dateWithoutTimeZone) : null);
       setPaymentMethod(sale.payment_method || null);
       setTotal(sale.total);
     }
@@ -87,7 +95,8 @@ export default function EditSaleWithoutDetailsPage() {
     };
 
     if (date) {
-      saleData.date = date;
+      const dateObj = date.toDate(); // Obtiene el objeto Date de JavaScript
+      saleData.date = formatDateTimeLocal(dateObj); // Formatea sin zona horaria
     }
 
     if (paymentMethod) {
@@ -96,7 +105,7 @@ export default function EditSaleWithoutDetailsPage() {
 
     const token = Cookies.get("access_token");
     try {
-      await api.put(`/sales/${saleId}/`, saleData, {
+      await api.put(`/sales/${saleId}/update-fast-sale/`, saleData, {
         headers: {
           Authorization: `Token ${token}`,
         },
@@ -159,15 +168,17 @@ export default function EditSaleWithoutDetailsPage() {
             ))}
           </Autocomplete>
 
-          <Input
-            label="Fecha"
-            placeholder="Seleccione una fecha (Opcional)"
+          <DatePicker
+            label="Fecha y Hora"
+            placeholder="Seleccione una fecha y hora (Opcional)"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={setDate}
             fullWidth
             variant="underlined"
-            type="date"
-            aria-label="Fecha de la Venta"
+            type="datetime" // Cambiar a 'datetime'
+            aria-label="Fecha y Hora de la Venta"
+            hideTimeZone
+            showMonthAndYearPickers
           />
 
           <Select

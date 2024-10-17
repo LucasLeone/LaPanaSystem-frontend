@@ -27,6 +27,10 @@ import {
   AccordionItem,
   Select,
   SelectItem,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from "@nextui-org/react";
 import {
   IconDownload,
@@ -37,6 +41,8 @@ import {
   IconChevronUp,
   IconChevronDown,
   IconEdit,
+  IconX,
+  IconDots
 } from "@tabler/icons-react";
 import { useState, useMemo, useCallback } from "react";
 import api from "@/app/axios";
@@ -47,13 +53,14 @@ import useSales from "@/app/hooks/useSales";
 import useCustomers from "@/app/hooks/useCustomers";
 import useUsers from "@/app/hooks/useUsers";
 
-// Opciones de filtro
 const STATE_CHOICES = [
   { id: "creada", name: "Creada" },
   { id: "pendiente_entrega", name: "Pendiente de Entrega" },
   { id: "entregada", name: "Entregada" },
   { id: "cobrada", name: "Cobrada" },
+  { id: "cobrada_parcial", name: "Cobrada Parcial" },
   { id: "cancelada", name: "Cancelada" },
+  { id: "anulada", name: "Anulada" },
 ];
 
 const SALE_TYPE_CHOICES = [
@@ -72,8 +79,8 @@ const PAYMENT_METHOD_CHOICES = [
 export default function SalesPage() {
   const router = useRouter();
 
-  // Estados temporales para los filtros en el modal
-  const [tempFilterState, setTempFilterState] = useState(null);
+  // Estados Temporales de Filtros
+  const [tempFilterState, setTempFilterState] = useState(new Set());
   const [tempFilterSaleType, setTempFilterSaleType] = useState(null);
   const [tempFilterPaymentMethod, setTempFilterPaymentMethod] = useState(null);
   const [tempFilterCustomer, setTempFilterCustomer] = useState(null);
@@ -94,10 +101,14 @@ export default function SalesPage() {
   const rowsPerPage = 10;
   const [page, setPage] = useState(1);
 
-  const [saleToDelete, setSaleToDelete] = useState(null);
+  const [saleToCancel, setSaleToCancel] = useState(null);
   const [saleToView, setSaleToView] = useState(null);
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isCancelOpen,
+    onOpen: onCancelOpen,
+    onClose: onCancelClose,
+  } = useDisclosure();
   const {
     isOpen: isViewOpen,
     onOpen: onViewOpen,
@@ -112,7 +123,6 @@ export default function SalesPage() {
   const { customers, loading: customersLoading, error: customersError } = useCustomers();
   const { users, loading: usersLoading, error: usersError } = useUsers();
 
-  // Construcción de los filtros aplicados a partir de 'filters', 'searchQuery' y 'sortDescriptor'
   const appliedFilters = useMemo(() => {
     const newFilters = { ...filters };
 
@@ -143,7 +153,6 @@ export default function SalesPage() {
     return newFilters;
   }, [filters, searchQuery, sortDescriptor]);
 
-  // Uso del hook useSales con los filtros aplicados y la paginación
   const {
     sales,
     totalCount,
@@ -155,8 +164,8 @@ export default function SalesPage() {
   const applyFilters = () => {
     const newFilters = {};
 
-    if (tempFilterState) {
-      newFilters.state = tempFilterState;
+    if (tempFilterState.size > 0) {
+      newFilters.state = Array.from(tempFilterState);
     }
     if (tempFilterSaleType) {
       newFilters.sale_type = tempFilterSaleType;
@@ -195,7 +204,7 @@ export default function SalesPage() {
 
   // Función para limpiar los filtros
   const clearFilters = () => {
-    setTempFilterState(null);
+    setTempFilterState(new Set());
     setTempFilterSaleType(null);
     setTempFilterPaymentMethod(null);
     setTempFilterCustomer(null);
@@ -217,31 +226,30 @@ export default function SalesPage() {
     setPage(1);
   }, []);
 
-  const handleDeleteClick = useCallback(
+  const handleCancelClick = useCallback(
     (sale) => {
-      setSaleToDelete(sale);
-      onOpen();
+      setSaleToCancel(sale);
+      onCancelOpen();
     },
-    [onOpen]
+    [onCancelOpen]
   );
 
-  const handleDeleteSale = useCallback(async () => {
-    if (!saleToDelete) return;
+  const handleCancelSale = useCallback(async () => {
+    if (!saleToCancel) return;
 
     const token = Cookies.get("access_token");
     try {
-      await api.delete(`/sales/${saleToDelete.id}/`, {
+      await api.post(`/sales/${saleToCancel.id}/cancel/`, null, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
       fetchSales(filters, (page - 1) * rowsPerPage, rowsPerPage);
-      onClose();
+      onCancelClose();
     } catch (error) {
-      console.error("Error al eliminar la venta:", error);
-      // Puedes manejar el error de manera más específica aquí
+      console.error("Error al cancelar la venta:", error);
     }
-  }, [saleToDelete, fetchSales, filters, onClose, page, rowsPerPage]);
+  }, [saleToCancel, fetchSales, filters, onCancelClose, page, rowsPerPage]);
 
   const handleViewClick = useCallback(
     (sale) => {
@@ -272,6 +280,7 @@ export default function SalesPage() {
     { key: "customer", label: "Cliente", sortable: true },
     { key: "seller", label: "Vendedor", sortable: true },
     { key: "total", label: "Total", sortable: true },
+    { key: "total_collected", label: "Total cobrado", sortable: true },
     { key: "sale_type", label: "Tipo de Venta", sortable: true },
     { key: "payment_method", label: "Método de Pago", sortable: true },
     { key: "state", label: "Estado", sortable: true },
@@ -281,70 +290,64 @@ export default function SalesPage() {
 
   const rows = useMemo(
     () =>
-      sales.map((sale) => ({
-        id: sale.id,
-        date: new Date(sale.date).toLocaleString("es-AR", {
-          year: "numeric",
-          month: "numeric",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }),
-        customer: sale.customer_details?.name || "",
-        seller: sale.user_details?.username || "",
-        total: `${parseFloat(sale.total).toLocaleString("es-AR", {
-          style: "currency",
-          currency: "ARS",
-        })}`,
-        sale_type: capitalize(sale.sale_type),
-        payment_method: capitalize(sale.payment_method),
-        state:
-          STATE_CHOICES.find((item) => item.id === sale.state)?.name ||
-          sale.state,
-        needs_delivery: sale.needs_delivery ? "Sí" : "No",
-        actions: (
-          <div className="flex gap-1">
-            <Tooltip content="Ver Detalles">
-              <Button
-                variant="light"
-                className="rounded-md"
-                isIconOnly
-                color="primary"
-                onPress={() => handleViewClick(sale)}
-                aria-label={`Ver detalles de la venta ${sale.id}`}
-              >
-                <IconChevronDown className="h-5" />
-              </Button>
-            </Tooltip>
-            <Tooltip content="Editar">
-              <Button
-                variant="light"
-                className="rounded-md"
-                isIconOnly
-                color="warning"
-                onPress={() => handleEditClick(sale)}
-                aria-label={`Editar venta ${sale.id}`}
-              >
-                <IconEdit className="h-5" />
-              </Button>
-            </Tooltip>
-            <Tooltip content="Eliminar">
-              <Button
-                variant="light"
-                className="rounded-md"
-                isIconOnly
-                color="danger"
-                onPress={() => handleDeleteClick(sale)}
-                aria-label={`Eliminar venta ${sale.id}`}
-              >
-                <IconTrash className="h-5" />
-              </Button>
-            </Tooltip>
-          </div>
-        ),
-      })),
-    [sales, handleDeleteClick, handleEditClick, handleViewClick]
+      sales.map((sale) => {
+        const isCancelDisabled = sale.state === "anulada" || sale.state === "cancelada";
+
+        return {
+          id: sale.id,
+          date: new Date(sale.date).toLocaleString("es-AR", {
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }),
+          customer: sale.customer_details?.name || "",
+          seller: sale.user_details?.username || "",
+          total: `${parseFloat(sale.total).toLocaleString("es-AR", {
+            style: "currency",
+            currency: "ARS",
+          })}`,
+          total_collected: `${parseFloat(sale.total_collected).toLocaleString("es-AR", {
+            style: "currency",
+            currency: "ARS",
+          })}`,
+          sale_type: SALE_TYPE_CHOICES.find(item => item.id === sale.sale_type)?.name || sale.sale_type,
+          payment_method: PAYMENT_METHOD_CHOICES.find(item => item.id === sale.payment_method)?.name || sale.payment_method,
+          state:
+            STATE_CHOICES.find((item) => item.id === sale.state)?.name ||
+            sale.state,
+          needs_delivery: sale.needs_delivery ? "Sí" : "No",
+          actions: (
+            <div className="flex gap-1">
+              <Dropdown>
+                <DropdownTrigger>
+                  <Button isIconOnly variant="light">
+                    <IconDots className="w-5" />
+                  </Button>
+                </DropdownTrigger>
+                <DropdownMenu aria-label="Opciones de Venta" disabledKeys={isCancelDisabled ? ["cancel"] : []}>
+                  <DropdownItem key="view" onPress={() => handleViewClick(sale)}>
+                    Ver Detalles
+                  </DropdownItem>
+                  <DropdownItem key="edit" onPress={() => handleEditClick(sale)}>
+                    Editar
+                  </DropdownItem>
+                  <DropdownItem
+                    key="cancel"
+                    onPress={() => handleCancelClick(sale)}
+                    className={isCancelDisabled ? "text-default-400" : "text-danger"}
+                  >
+                    {(sale.state === "creada" || sale.state === "pendiente_entrega" || sale.state === "entregada") ? "Cancelar" : "Anular"}
+                  </DropdownItem>
+                </DropdownMenu>
+              </Dropdown>
+            </div>
+          ),
+        };
+      }),
+    [sales, handleViewClick, handleEditClick, handleCancelClick]
   );
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
@@ -378,9 +381,8 @@ export default function SalesPage() {
 
       return (
         <div
-          className={`flex items-center ${
-            isSortable ? "cursor-pointer" : ""
-          }`}
+          className={`flex items-center ${isSortable ? "cursor-pointer" : ""
+            }`}
           onClick={() => isSortable && handleSortChange(column.key)}
           aria-sort={isSorted ? direction : "none"}
         >
@@ -430,22 +432,6 @@ export default function SalesPage() {
 
       {/* Búsqueda y Filtros */}
       <div className="flex flex-col md:flex-row md:justify-end items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
-        {/* <Input
-          placeholder="Buscar ventas"
-          startContent={<IconSearch className="h-4" />}
-          radius="none"
-          variant="underlined"
-          value={searchQuery}
-          onChange={handleSearchChange}
-          onClear={() => {
-            setSearchQuery("");
-            setPage(1);
-          }}
-          className="w-full md:w-1/3"
-          aria-label="Buscar ventas"
-          isClearable={true}
-          isDisabled
-        /> */}
         <Tooltip content="Aplicar Filtros">
           <Button
             variant="bordered"
@@ -550,19 +536,20 @@ export default function SalesPage() {
               </ModalHeader>
               <ModalBody>
                 <div className="flex flex-col space-y-4">
-                  {/* Filtro de Estado con Select */}
+                  {/* Filtro de Estado con Select Múltiple */}
                   <div>
                     <Select
                       label="Buscar y seleccionar estado"
-                      placeholder="Selecciona un estado"
+                      placeholder="Selecciona uno o más estados"
                       className="w-full"
                       aria-label="Filtro de Estado"
-                      onClear={() => setTempFilterState(null)}
+                      onClear={() => setTempFilterState(new Set())}
                       onSelectionChange={(value) =>
-                        setTempFilterState(value ? Array.from(value)[0] : null)
+                        setTempFilterState(value ? new Set(value) : new Set())
                       }
-                      selectedKeys={tempFilterState ? new Set([tempFilterState]) : new Set()}
+                      selectedKeys={tempFilterState}
                       variant="underlined"
+                      selectionMode="multiple"
                     >
                       {STATE_CHOICES.map((state) => (
                         <SelectItem
@@ -730,6 +717,9 @@ export default function SalesPage() {
                       placeholder="Selecciona una fecha"
                       aria-label="Filtro de Fecha Específica"
                       variant="underlined"
+                      type="date"
+                      hideTimeZone
+                      showMonthAndYearPickers
                     />
                   </div>
 
@@ -742,6 +732,9 @@ export default function SalesPage() {
                       placeholder="Selecciona un rango de fechas"
                       aria-label="Filtro de Rango de Fechas"
                       variant="underlined"
+                      type="datetime" // Asegúrate de que permite seleccionar fecha y hora
+                      hideTimeZone
+                      showMonthAndYearPickers
                     />
                   </div>
                 </div>
@@ -759,23 +752,23 @@ export default function SalesPage() {
         </ModalContent>
       </Modal>
 
-      {/* Modal de Confirmación de Eliminación */}
+      {/* Modal de Confirmación de Cancelación */}
       <Modal
-        isOpen={isOpen}
-        onOpenChange={onClose}
-        aria-labelledby="modal-title"
+        isOpen={isCancelOpen}
+        onOpenChange={onCancelClose}
+        aria-labelledby="modal-cancel-title"
         placement="top-center"
       >
         <ModalContent>
           {() => (
             <>
               <ModalHeader className="flex flex-col gap-1">
-                Confirmar Eliminación
+                Confirmar Cancelación
               </ModalHeader>
               <ModalBody>
                 <p>
-                  ¿Estás seguro de que deseas eliminar la venta{" "}
-                  <strong>#{saleToDelete?.id}</strong>? Esta acción no se puede
+                  ¿Estás seguro de que deseas cancelar la venta{" "}
+                  <strong>#{saleToCancel?.id}</strong>? Esta acción no se puede
                   deshacer.
                 </p>
               </ModalBody>
@@ -783,17 +776,17 @@ export default function SalesPage() {
                 <Button
                   color="danger"
                   variant="light"
-                  onPress={onClose}
+                  onPress={onCancelClose}
                   disabled={false}
                 >
                   Cancelar
                 </Button>
                 <Button
                   color="primary"
-                  onPress={handleDeleteSale}
+                  onPress={handleCancelSale}
                   disabled={false}
                 >
-                  Eliminar
+                  Confirmar
                 </Button>
               </ModalFooter>
             </>
@@ -864,7 +857,7 @@ export default function SalesPage() {
                   >
                     <div className="overflow-x-auto max-h-60 border rounded-md">
                       {saleToView?.sale_details &&
-                      saleToView.sale_details.length > 0 ? (
+                        saleToView.sale_details.length > 0 ? (
                         <Table
                           aria-label="Items de la Venta"
                           className="border-none min-w-full"
