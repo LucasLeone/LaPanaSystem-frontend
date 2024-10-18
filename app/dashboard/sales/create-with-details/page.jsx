@@ -17,7 +17,8 @@ import {
   TableCell,
   Checkbox,
   Autocomplete,
-  AutocompleteItem
+  AutocompleteItem,
+  DatePicker
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft, IconTrash } from "@tabler/icons-react";
 import { useState, useCallback, useMemo } from "react";
@@ -26,6 +27,8 @@ import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import useCustomers from "@/app/hooks/useCustomers";
 import useProducts from "@/app/hooks/useProducts";
+import {now, getLocalTimeZone} from "@internationalized/date";
+import { formatDateToISO } from "@/app/utils";
 
 const PAYMENT_METHOD_CHOICES = [
   { id: "efectivo", name: "Efectivo" },
@@ -46,7 +49,7 @@ export default function CreateSalePage() {
 
   const [customer, setCustomer] = useState(null);
   const [saleType, setSaleType] = useState("minorista");
-  const [date, setDate] = useState(getTodayDate());
+  const [date, setDate] = useState();
   const [paymentMethod, setPaymentMethod] = useState("efectivo");
   const [needsDelivery, setNeedsDelivery] = useState(false);
 
@@ -58,14 +61,6 @@ export default function CreateSalePage() {
   ]);
 
   const router = useRouter();
-
-  function getTodayDate() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
 
   const isValidQuantity = (quantity) => {
     return /^\d+(\.\d{1,2})?$/.test(quantity) && parseFloat(quantity) > 0;
@@ -135,7 +130,7 @@ export default function CreateSalePage() {
     };
 
     if (date) {
-      saleData.date = date;
+      saleData.date = formatDateToISO(date);
     }
 
     if (paymentMethod) {
@@ -240,15 +235,18 @@ export default function CreateSalePage() {
           ))}
         </Select>
 
-        <Input
+        <DatePicker
           label="Fecha"
           placeholder="Seleccione una fecha (Opcional)"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          onChange={setDate}
           fullWidth
           variant="underlined"
           type="date"
           aria-label="Fecha de la Venta"
+          hideTimeZone
+          showMonthAndYearPickers
+          defaultValue={now(getLocalTimeZone())}
         />
 
         <Select
@@ -316,6 +314,7 @@ export default function CreateSalePage() {
                         <Spinner size="sm" />
                       ) : (
                         <Autocomplete
+                          aria-label={`Producto Detalle ${index + 1}`}
                           placeholder="Seleccione un producto"
                           onSelectionChange={(value) => handleSaleDetailChange(index, "product", value)}
                           variant="underlined"

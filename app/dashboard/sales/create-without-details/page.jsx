@@ -19,7 +19,8 @@ import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import useCustomers from "@/app/hooks/useCustomers";
-import {now, getLocalTimeZone} from "@internationalized/date";
+import { now, getLocalTimeZone } from "@internationalized/date";
+import { formatDateToISO } from "@/app/utils";
 
 const PAYMENT_METHOD_CHOICES = [
   { id: "efectivo", name: "Efectivo" },
@@ -31,7 +32,7 @@ const PAYMENT_METHOD_CHOICES = [
 
 export default function CreateSalePage() {
   const { customers, loading: customersLoading, error: customersError } = useCustomers();
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -39,16 +40,8 @@ export default function CreateSalePage() {
   const [date, setDate] = useState();
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [total, setTotal] = useState("");
-  
-  const router = useRouter();
 
-  function getTodayDate() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
+  const router = useRouter();
 
   const isValidTotal = (total) => {
     return /^\d+(\.\d{1,2})?$/.test(total) && parseFloat(total) > 0;
@@ -79,7 +72,7 @@ export default function CreateSalePage() {
     }
 
     if (date) {
-      saleData.date = date;
+      saleData.date = formatDateToISO(date);
     }
 
     if (paymentMethod) {

@@ -16,7 +16,8 @@ import {
   TableRow,
   TableCell,
   Autocomplete,
-  AutocompleteItem
+  AutocompleteItem,
+  DatePicker
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft, IconTrash } from "@tabler/icons-react";
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -26,6 +27,9 @@ import { useRouter, useParams } from "next/navigation";
 import useProducts from "@/app/hooks/useProducts";
 import useCustomers from "@/app/hooks/useCustomers";
 import useSale from "@/app/hooks/useSale";
+import { formatDateToISO } from "@/app/utils";
+import { parseDateTime } from "@internationalized/date";
+import { parseAbsoluteToLocal } from "@internationalized/date";
 
 const PAYMENT_METHOD_CHOICES = [
   { id: "efectivo", name: "Efectivo" },
@@ -54,20 +58,12 @@ export default function EditSalePage() {
 
   const [customer, setCustomer] = useState(null);
   const [saleType, setSaleType] = useState("minorista");
-  const [date, setDate] = useState(getTodayDate());
+  const [date, setDate] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("efectivo");
 
   const [saleDetails, setSaleDetails] = useState([
     { product: null, quantity: "" },
   ]);
-
-  function getTodayDate() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
 
   const isValidQuantity = (quantity) => {
     return /^\d+(\.\d{1,3})?$/.test(quantity) && parseFloat(quantity) > 0;
@@ -76,7 +72,7 @@ export default function EditSalePage() {
   useEffect(() => {
     setCustomer(sale.customer_details?.id);
     setSaleType(sale.sale_type);
-    setDate(sale.date ? sale.date.split('T')[0] : getTodayDate());
+    setDate(sale.date ? parseAbsoluteToLocal(sale.date) : null)
     setPaymentMethod(sale.payment_method || "efectivo");
     if (sale.sale_details && sale.sale_details.length > 0) {
       setSaleDetails(sale.sale_details.map(detail => ({
@@ -161,7 +157,7 @@ export default function EditSalePage() {
     };
 
     if (date) {
-      saleData.date = date;
+      saleData.date = formatDateToISO(date);
     }
 
     if (paymentMethod) {
@@ -274,15 +270,17 @@ export default function EditSalePage() {
           ))}
         </Select>
 
-        <Input
+        <DatePicker
           label="Fecha"
           placeholder="Seleccione una fecha (Opcional)"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          onChange={setDate}
           fullWidth
           variant="underlined"
-          type="date"
+          type="datetime"
           aria-label="Fecha de la Venta"
+          hideTimeZone
+          showMonthAndYearPickers
         />
 
         <Select
@@ -341,6 +339,7 @@ export default function EditSalePage() {
                         <Spinner size="sm" />
                       ) : (
                         <Autocomplete
+                          aria-label={`Detalle Producto ${index + 1}`}
                           placeholder="Seleccione un producto"
                           onSelectionChange={(value) => handleSaleDetailChange(index, "product", value)}
                           selectedKey={detail.product ? detail.product.toString() : ""}

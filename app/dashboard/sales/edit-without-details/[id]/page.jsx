@@ -20,7 +20,8 @@ import Cookies from "js-cookie";
 import { useRouter, useParams } from "next/navigation";
 import useCustomers from "@/app/hooks/useCustomers";
 import useSale from "@/app/hooks/useSale";
-import { parseDateTime } from "@internationalized/date"; // Importa parseDateTime
+import { formatDateToISO } from "@/app/utils";
+import { parseAbsoluteToLocal } from "@internationalized/date";
 
 const PAYMENT_METHOD_CHOICES = [
   { id: "efectivo", name: "Efectivo" },
@@ -29,18 +30,6 @@ const PAYMENT_METHOD_CHOICES = [
   { id: "qr", name: "QR" },
   { id: "cuenta_corriente", name: "Cuenta Corriente" },
 ];
-
-// Función para formatear la fecha localmente sin zona horaria
-const formatDateTimeLocal = (date) => {
-  const pad = (num) => String(num).padStart(2, '0');
-  const year = date.getFullYear();
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  const seconds = pad(date.getSeconds());
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-};
 
 export default function EditSaleWithoutDetailsPage() {
   const router = useRouter();
@@ -54,16 +43,14 @@ export default function EditSaleWithoutDetailsPage() {
   const [error, setError] = useState(null);
 
   const [customer, setCustomer] = useState(null);
-  const [date, setDate] = useState(null); // Inicializar como null
+  const [date, setDate] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [total, setTotal] = useState("");
 
   useEffect(() => {
     if (sale) {
       setCustomer(sale.customer_details?.id);
-      // Elimina la zona horaria antes de parsear
-      const dateWithoutTimeZone = sale.date ? sale.date.substring(0, 19) : null;
-      setDate(dateWithoutTimeZone ? parseDateTime(dateWithoutTimeZone) : null);
+      setDate(sale.date ? parseAbsoluteToLocal(sale.date) : null);
       setPaymentMethod(sale.payment_method || null);
       setTotal(sale.total);
     }
@@ -95,8 +82,7 @@ export default function EditSaleWithoutDetailsPage() {
     };
 
     if (date) {
-      const dateObj = date.toDate(); // Obtiene el objeto Date de JavaScript
-      saleData.date = formatDateTimeLocal(dateObj); // Formatea sin zona horaria
+      saleData.date = formatDateToISO(date);
     }
 
     if (paymentMethod) {
@@ -175,7 +161,7 @@ export default function EditSaleWithoutDetailsPage() {
             onChange={setDate}
             fullWidth
             variant="underlined"
-            type="datetime" // Cambiar a 'datetime'
+            type="datetime-local"
             aria-label="Fecha y Hora de la Venta"
             hideTimeZone
             showMonthAndYearPickers
