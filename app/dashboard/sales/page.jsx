@@ -221,11 +221,6 @@ export default function SalesPage() {
     setFilters({});
   };
 
-  const handleSearchChange = useCallback((e) => {
-    setSearchQuery(e.target.value);
-    setPage(1);
-  }, []);
-
   const handleCancelClick = useCallback(
     (sale) => {
       setSaleToCancel(sale);
@@ -281,9 +276,9 @@ export default function SalesPage() {
     { key: "seller", label: "Vendedor", sortable: true },
     { key: "total", label: "Total", sortable: true },
     { key: "total_collected", label: "Total cobrado", sortable: true },
-    { key: "sale_type", label: "Tipo de Venta", sortable: true },
-    { key: "payment_method", label: "Método de Pago", sortable: true },
-    { key: "state", label: "Estado", sortable: true },
+    { key: "sale_type", label: "Tipo de Venta", sortable: false },
+    { key: "payment_method", label: "Método de Pago", sortable: false },
+    { key: "state", label: "Estado", sortable: false },
     { key: "needs_delivery", label: "Delivery", sortable: false },
     { key: "actions", label: "Acciones", sortable: false },
   ];

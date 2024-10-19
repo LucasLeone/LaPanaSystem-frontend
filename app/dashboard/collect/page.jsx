@@ -1,205 +1,310 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-  Pagination,
-  Spinner,
   Tooltip,
+  Spinner,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Pagination,
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
   Modal,
   ModalContent,
   ModalHeader,
   ModalBody,
   ModalFooter,
-  useDisclosure,
   Accordion,
   AccordionItem,
-  Autocomplete,
-  AutocompleteItem,
-  DatePicker,
+  Input,
+  ScrollShadow,
 } from "@nextui-org/react";
 import {
-  IconChevronDown,
-  IconCash,
   IconDownload,
-  IconFilter
+  IconFilter,
+  IconDots,
 } from "@tabler/icons-react";
-import useCustomers from "@/app/hooks/useCustomers";
-import useSales from "@/app/hooks/useSales";
-import api from '@/app/axios';
-import Cookies from "js-cookie";
-import { capitalize } from "@/app/utils";
-import { parseDate } from '@internationalized/date';
+import useSalesForCollect from '@/app/hooks/useSalesForCollect';
+import { useRouter } from "next/navigation";
+import api from "@/app/axios";
+import Cookies from 'js-cookie';
+import { capitalize } from '@/app/utils';
 
-const STATE_CHOICES = {
-  creada: "Creada",
-  pendiente_entrega: "Pendiente de Entrega",
-  entregada: "Entregada",
-  cobrada: "Cobrada",
-  cancelada: "Cancelada",
-};
+const STATE_CHOICES = [
+  { id: "creada", name: "Creada" },
+  { id: "pendiente_entrega", name: "Pendiente de Entrega" },
+  { id: "entregada", name: "Entregada" },
+  { id: "cobrada", name: "Cobrada" },
+  { id: "cobrada_parcial", name: "Cobrada Parcial" },
+  { id: "cancelada", name: "Cancelada" },
+  { id: "anulada", name: "Anulada" },
+];
+
+const SALE_TYPE_CHOICES = [
+  { id: "minorista", name: "Minorista" },
+  { id: "mayorista", name: "Mayorista" },
+];
+
+const PAYMENT_METHOD_CHOICES = [
+  { id: "efectivo", name: "Efectivo" },
+  { id: "tarjeta", name: "Tarjeta" },
+  { id: "transferencia", name: "Transferencia" },
+  { id: "qr", name: "QR" },
+  { id: "cuenta_corriente", name: "Cuenta Corriente" },
+];
+
+function getChoiceName(choices, id) {
+  const choice = choices.find(item => item.id === id);
+  return choice ? choice.name : capitalize(id);
+}
 
 export default function CollectPage() {
-  const [filterCustomer, setFilterCustomer] = useState(null);
-  const [filterDate, setFilterDate] = useState();
-  const [page, setPage] = useState(1);
- 
-  const [saleToView, setSaleToView] = useState(null);
-  const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
+  const router = useRouter();
 
-  const { customers, loading: customersLoading, error: customersError } = useCustomers();
-
-  const [tempFilterCustomer, setTempFilterCustomer] = useState(null);
-  const [tempFilterDate, setTempFilterDate] = useState(null);
-
-  const { isOpen: isFilterModalOpen, onOpen: onFilterModalOpen, onClose: onFilterModalClose } = useDisclosure();
-
-  const salesFilters = useMemo(() => {
-    const filters = {
-      state: "entregada"
-    };
-
-    if (filterDate) {
-      filters.date = filterDate;
-    }
-
-    if (filterCustomer) {
-      filters.customer = filterCustomer;
-    }
-
-    return filters;
-  }, [filterCustomer, filterDate]);
-
-  const { sales, loading: salesLoading, error: salesError, fetchSales } = useSales(salesFilters);
-
-  const filteredAndSearchedSales = useMemo(() => {
-    return sales;
-  }, [sales]);
+  const { salesForCollect, totalCount, loading, error, fetchSalesForCollect } = useSalesForCollect();
 
   const rowsPerPage = 10;
-  const totalItems = filteredAndSearchedSales.length;
-  const totalPages = Math.ceil(totalItems / rowsPerPage);
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(totalCount / rowsPerPage);
 
-  useEffect(() => {
-    if (page > totalPages && totalPages > 0) {
-      setPage(1);
-    }
-  }, [totalPages, page]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
-  const currentItems = useMemo(() => {
-    const startIdx = (page - 1) * rowsPerPage;
-    const endIdx = startIdx + rowsPerPage;
-    return filteredAndSearchedSales.slice(startIdx, endIdx);
-  }, [filteredAndSearchedSales, page, rowsPerPage]);
+  // Estados para manejar los montos parciales y errores
+  const [partialAmounts, setPartialAmounts] = useState({});
+  const [partialErrors, setPartialErrors] = useState({});
 
-  const handlePageChange = useCallback((newPage) => {
-    setPage(newPage);
+  // Estado para manejar la carga al cobrar todas las ventas
+  const [isCollectingAll, setIsCollectingAll] = useState(false);
+
+  // Estados para el modal de confirmación
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [customerToCollect, setCustomerToCollect] = useState(null);
+
+  const handleViewDetails = useCallback((customer) => {
+    setSelectedCustomer(customer);
+    setIsDetailsModalOpen(true);
   }, []);
 
-  const handleViewClick = useCallback((sale) => {
-    setSaleToView(sale);
-    onViewOpen();
-  }, [onViewOpen]);
+  const handleCloseDetailsModal = useCallback(() => {
+    setSelectedCustomer(null);
+    setIsDetailsModalOpen(false);
+    // Limpiar los montos parciales y errores al cerrar el modal
+    setPartialAmounts({});
+    setPartialErrors({});
+  }, []);
 
-  const handleMarkAsCollected = useCallback(async (sale) => {
-    const token = Cookies.get('access_token');
+  const handlePartialCollect = useCallback(async (saleId, saleTotal) => {
+    const amount = parseFloat(partialAmounts[saleId]);
+
+    if (isNaN(amount) || amount <= 0) {
+      setPartialErrors(prev => ({
+        ...prev,
+        [saleId]: 'Por favor, ingrese un monto válido.',
+      }));
+      return;
+    }
+
+    if (amount > parseFloat(saleTotal)) {
+      setPartialErrors(prev => ({
+        ...prev,
+        [saleId]: 'El monto no puede exceder el total de la venta.',
+      }));
+      return;
+    }
+
+    const token = Cookies.get("access_token");
     try {
       await api.post(
-        `/sales/${sale.id}/mark-as-charged/`,
-        null,
+        `/sales/${saleId}/mark-as-partial-charged/`,
+        { total: amount },
         {
           headers: {
             Authorization: `Token ${token}`,
           },
         }
       );
-      fetchSales(salesFilters);
-    } catch (err) {
-      console.error(`Error al marcar como cobrado la venta ${sale.id}:`, err);
+      fetchSalesForCollect({}, (page - 1) * rowsPerPage);
+      console.log(`Venta #${saleId} marcada como parcialmente cobrada.`);
+      // Limpiar el monto y el error después de una recolección exitosa
+      setPartialAmounts(prev => ({
+        ...prev,
+        [saleId]: '',
+      }));
+      setPartialErrors(prev => ({
+        ...prev,
+        [saleId]: '',
+      }));
+      // Aquí podrías agregar una actualización del estado o algún feedback visual
+    } catch (error) {
+      console.error(`Error al marcar la venta #${saleId} como parcialmente cobrada:`, error);
+      setPartialErrors(prev => ({
+        ...prev,
+        [saleId]: 'Error al cobrar parcialmente la venta.',
+      }));
+      // Aquí podrías agregar una actualización del estado o algún feedback visual
     }
-  }, [salesFilters, fetchSales]);
+  }, [fetchSalesForCollect, page, rowsPerPage, partialAmounts]);
+
+  const handleCollect = useCallback(async (saleId) => {
+    const token = Cookies.get("access_token");
+
+    try {
+      await api.post(
+        `/sales/${saleId}/mark-as-charged/`,
+        {},
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
+      fetchSalesForCollect({}, (page - 1) * rowsPerPage);
+      console.log(`Venta #${saleId} marcada como totalmente cobrada.`);
+
+      if (selectedCustomer) {
+        const remainingSales = selectedCustomer.sales_to_collect.filter(sale => sale.id !== saleId);
+
+        if (remainingSales.length === 0) {
+          // Si no quedan ventas pendientes, cerrar el modal
+          setIsDetailsModalOpen(false);
+          setSelectedCustomer(null);
+        } else {
+          // Si quedan ventas, actualizar el estado de selectedCustomer
+          setSelectedCustomer(prev => ({
+            ...prev,
+            sales_to_collect: remainingSales,
+          }));
+        }
+      }
+      // Aquí podrías agregar una actualización del estado o algún feedback visual
+    } catch (error) {
+      console.error(`Error al marcar la venta #${saleId} como cobrada:`, error);
+      // Manejar errores aquí, por ejemplo, mostrar una notificación
+    }
+  }, [fetchSalesForCollect, page, rowsPerPage, selectedCustomer]);
+
+  // Función para abrir el modal de confirmación
+  const handleCollectAllSales = useCallback((customer) => {
+    setCustomerToCollect(customer);
+    setIsConfirmModalOpen(true);
+  }, []);
+
+  // Función para manejar la confirmación y realizar la cobranza masiva
+  const handleConfirmCollectAllSales = useCallback(async (customer) => {
+    const token = Cookies.get("access_token");
+
+    try {
+      setIsCollectingAll(true);
+
+      for (const sale of customer.sales_to_collect) {
+        try {
+          await api.post(
+            `/sales/${sale.id}/mark-as-charged/`,
+            {},
+            {
+              headers: {
+                Authorization: `Token ${token}`,
+              },
+            }
+          );
+          console.log(`Venta #${sale.id} marcada como cobrada.`);
+        } catch (error) {
+          console.error(`Error al marcar la venta #${sale.id} como cobrada:`, error);
+          // Opcional: Puedes decidir continuar o detener el proceso
+        }
+      }
+
+      // Refrescar la lista de ventas para cobrar
+      fetchSalesForCollect({}, (page - 1) * rowsPerPage);
+      // Cerrar el modal de confirmación
+      setIsConfirmModalOpen(false);
+      // Limpiar el cliente seleccionado
+      setCustomerToCollect(null);
+    } catch (error) {
+      console.error("Error al cobrar todas las ventas:", error);
+      // Manejar errores generales aquí, por ejemplo, mostrar una notificación de error
+    } finally {
+      setIsCollectingAll(false);
+    }
+  }, [fetchSalesForCollect, page, rowsPerPage]);
+
+  const handlePageChange = useCallback((newPage) => {
+    setPage(newPage);
+    fetchSalesForCollect({}, (newPage - 1) * rowsPerPage);
+  }, [fetchSalesForCollect, rowsPerPage]);
 
   const columns = [
-    { key: 'id', label: '#', sortable: false },
-    { key: 'date', label: 'Fecha y Hora', sortable: false },
-    { key: 'customer', label: 'Cliente', sortable: false },
-    { key: 'total', label: 'Total', sortable: false },
-    { key: 'state', label: 'Estado', sortable: false },
-    { key: 'actions', label: 'Acciones', sortable: false },
+    { key: "customer", name: "Cliente" },
+    { key: "total_sales", name: "Total de Ventas" },
+    { key: "total_returns", name: "Total de Devoluciones" },
+    { key: "total_collected", name: "Total Cobrado" },
+    { key: "total_to_collect", name: "Total a Cobrar" },
+    { key: "sales_quantity", name: "Cantidad de Ventas" },
+    { key: "actions", name: "Acciones" },
   ];
 
-  const rows = useMemo(() => (
-    currentItems.map(sale => ({
-      id: sale.id,
-      date: new Date(sale.date).toLocaleString('es-AR', {
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-      }),
-      customer: sale.customer_details?.name || '',
-      total: `${parseFloat(sale.total).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`,
-      state: STATE_CHOICES[sale.state] || capitalize(sale.state),
-      actions: (
-        <div className="flex gap-1">
-          <Tooltip content="Ver Detalles">
-            <Button
-              variant="light"
-              className="rounded-md"
-              isIconOnly
-              color="primary"
-              onPress={() => handleViewClick(sale)}
-              aria-label={`Ver detalles de la venta ${sale.id}`}
-            >
-              <IconChevronDown className="h-5" />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Marcar como Cobrado">
-            <Button
-              variant="light"
-              className="rounded-md"
-              isIconOnly
-              color="secondary"
-              onPress={() => handleMarkAsCollected(sale)}
-              aria-label={`Marcar como cobrado la venta ${sale.id}`}
-              isDisabled={sale.state !== 'entregada'}
-            >
-              <IconCash className="h-5" />
-            </Button>
-          </Tooltip>
-        </div>
-      )
-    }))
-  ), [currentItems, handleViewClick, handleMarkAsCollected]);
+  const rows = useMemo(() => {
+    if (!salesForCollect || !Array.isArray(salesForCollect)) return [];
 
-  const applyFilters = () => {
-    setFilterCustomer(tempFilterCustomer);
-    setFilterDate(tempFilterDate);
-    setPage(1);
-    onFilterModalClose();
-  };
-
-  const clearFilters = () => {
-    setTempFilterCustomer(null);
-    setTempFilterDate(null);
-  };
-
-  useEffect(() => {
-    if (isFilterModalOpen) {
-      setTempFilterCustomer(filterCustomer);
-      setTempFilterDate(filterDate);
-    }
-  }, [isFilterModalOpen, filterCustomer, filterDate]);
+    return salesForCollect.map((customer, index) => {
+      return {
+        id: customer.id || index,
+        customer: customer.name,
+        total_sales: parseFloat(customer.total_sales).toLocaleString("es-AR", {
+          style: "currency",
+          currency: "ARS",
+        }),
+        total_returns: parseFloat(customer.total_discounted).toLocaleString("es-AR", {
+          style: "currency",
+          currency: "ARS",
+        }),
+        total_collected: parseFloat(customer.total_collected).toLocaleString("es-AR", {
+          style: "currency",
+          currency: "ARS",
+        }),
+        total_to_collect: parseFloat(customer.total_to_collect).toLocaleString("es-AR", {
+          style: "currency",
+          currency: "ARS",
+        }),
+        sales_quantity: customer.sales_to_collect.length,
+        actions: (
+          <div className="flex gap-1">
+            <Dropdown>
+              <DropdownTrigger>
+                <Button isIconOnly variant="light" disabled={isCollectingAll}>
+                  <IconDots className="w-5" />
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu aria-label="Opciones de Cobranza">
+                <DropdownItem key="view" onPress={() => handleViewDetails(customer)}>
+                  Ver Detalles
+                </DropdownItem>
+                <DropdownItem
+                  key="collect"
+                  onPress={() => { handleCollectAllSales(customer) }}
+                  disabled={isCollectingAll}
+                >
+                  Cobrar Totalmente
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          </div>
+        ),
+      };
+    });
+  }, [salesForCollect, handleViewDetails, handleCollectAllSales, isCollectingAll]);
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
 
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Cobrar</p>
         <div className="flex flex-wrap gap-2">
@@ -209,9 +314,8 @@ export default function CollectPage() {
               Exportar
             </Button>
           </Tooltip>
-          {/* Botón para abrir el modal de filtros */}
           <Tooltip content="Filtrar ventas">
-            <Button variant="bordered" className="rounded-md border-1.5" onPress={onFilterModalOpen}>
+            <Button variant="bordered" className="rounded-md border-1.5">
               <IconFilter className="h-4 mr-1" />
               Filtrar
             </Button>
@@ -219,23 +323,18 @@ export default function CollectPage() {
         </div>
       </div>
 
-      {/* Tabla de Ventas Pendientes */}
       <div className="overflow-x-auto border rounded-md">
-        {(salesLoading || customersLoading) ? (
+        {loading ? (
           <div className="flex justify-center items-center p-6">
             <Spinner size="lg" />
           </div>
-        ) : (salesError || customersError) ? (
-          <div className="text-red-500 text-center p-6">
-            {salesError || customersError}
-          </div>
-        ) : currentItems.length === 0 ? (
-          <div className="text-center p-6">
-            No hay ventas pendientes de cobro para mostrar.
-          </div>
+        ) : error ? (
+          <div className="text-red-500 text-center p-6">{error}</div>
+        ) : rows.length === 0 ? (
+          <div className="text-center p-6">No hay ventas para mostrar.</div>
         ) : (
           <Table
-            aria-label="Ventas Pendientes de Cobro"
+            aria-label="Cobranza"
             className="border-none min-w-full"
             shadow="none"
             isCompact
@@ -246,32 +345,33 @@ export default function CollectPage() {
                 <TableColumn
                   key={column.key}
                   className="bg-white text-bold border-b-1"
-                  isSortable={column.sortable}
                 >
-                  {column.label}
+                  {column.name}
                 </TableColumn>
               )}
             </TableHeader>
-            <TableBody items={rows}>
-              {(item) => (
+            <TableBody>
+              {rows.map((item) => (
                 <TableRow key={item.id}>
-                  {(columnKey) => (
-                    <TableCell>
-                      {item[columnKey]}
+                  {columns.map((column) => (
+                    <TableCell
+                      key={column.key}
+                      className="min-w-[80px] sm:min-w-[100px]"
+                    >
+                      {item[column.key]}
                     </TableCell>
-                  )}
+                  ))}
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
         )}
       </div>
 
-      {/* Paginación */}
-      {!salesLoading && !customersLoading && !salesError && !customersError && currentItems.length !== 0 && (
-        <div className='flex flex-col sm:flex-row items-center justify-between mt-4'>
+      {!loading && !error && rows.length !== 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-4">
           <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
-            Mostrando {currentItems.length} de {totalItems} ventas pendientes
+            Mostrando {salesForCollect.length} de {totalCount} clientes
           </p>
           <Pagination
             total={totalPages}
@@ -285,130 +385,167 @@ export default function CollectPage() {
         </div>
       )}
 
-      {/* Modal de Filtros */}
+      {/* Modal de Confirmación */}
       <Modal
-        isOpen={isFilterModalOpen}
-        onOpenChange={onFilterModalClose}
-        aria-labelledby="modal-filters-title"
+        isOpen={isConfirmModalOpen}
+        onOpenChange={() => setIsConfirmModalOpen(false)}
+        aria-labelledby="modal-confirm-title"
         placement="center"
-        size="lg"
+        size="sm"
       >
         <ModalContent>
-          {() => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">
-                Filtros de Ventas
-              </ModalHeader>
-              <ModalBody>
-                <div className="flex flex-col space-y-4">
-                  {/* Filtro de Cliente con Autocomplete */}
-                  <div>
-                    <Autocomplete
-                      label="Buscar y seleccionar cliente"
-                      placeholder="Escribe para buscar"
-                      className="w-full"
-                      aria-label="Filtro de Cliente"
-                      onClear={() => setTempFilterCustomer(null)}
-                      onSelectionChange={(value) => setTempFilterCustomer(value)}
-                      selectedKey={tempFilterCustomer}
-                      variant="underlined"
-                      isClearable
-                    >
-                      {customers.map((customer) => (
-                        <AutocompleteItem
-                          key={customer.id.toString()}
-                          value={customer.id.toString()}
-                        >
-                          {customer.name}
-                        </AutocompleteItem>
-                      ))}
-                    </Autocomplete>
-                  </div>
-
-                  {/* Filtro de Fecha con DatePicker */}
-                  <div>
-                    <DatePicker
-                      label="Seleccionar Fecha"
-                      value={tempFilterDate ? parseDate(tempFilterDate) : undefined}
-                      onChange={(date) => setTempFilterDate(new Date(date).toISOString().split('T')[0])}
-                      placeholder="Selecciona una fecha"
-                      aria-label="Filtro de Fecha Específica"
-                      variant="underlined"
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="light" onPress={clearFilters} color="warning">
-                  Limpiar Filtros
-                </Button>
-                <Button onPress={applyFilters} color="primary">
-                  Aplicar Filtros
-                </Button>
-              </ModalFooter>
-            </>
-          )}
+          <ModalHeader>Confirmar Cobranza</ModalHeader>
+          <ModalBody>
+            <p>
+              ¿Está seguro de que desea cobrar todas las ventas de <strong>{customerToCollect?.name}</strong>?
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button auto flat color="error" onPress={() => setIsConfirmModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              auto
+              color="success"
+              onPress={() => handleConfirmCollectAllSales(customerToCollect)}
+              disabled={isCollectingAll}
+            >
+              {isCollectingAll ? <Spinner size="sm" /> : "Confirmar"}
+            </Button>
+          </ModalFooter>
         </ModalContent>
       </Modal>
 
-      {/* Modal para Ver Detalles */}
-      <Modal size="2xl" isOpen={isViewOpen} onOpenChange={onViewClose} aria-labelledby="view-modal-title" placement="center">
+      {/* Modal de Detalles */}
+      <Modal
+        isOpen={isDetailsModalOpen}
+        onOpenChange={handleCloseDetailsModal}
+        aria-labelledby="modal-details-title"
+        placement="center"
+        size="2xl"
+        className="max-h-[72vh] overflow-y-auto"
+      >
         <ModalContent>
-          {() => (
+          {selectedCustomer && (
             <>
-              <ModalHeader className="flex flex-col gap-1">Detalles de la Venta #{saleToView?.id}</ModalHeader>
-              <ModalBody>
-                <Accordion defaultExpandedKeys={["2"]}>
-                  <AccordionItem key="1" aria-label="Detalles Generales" title="Detalles Generales">
-                    <p><strong>Fecha y Hora:</strong> {new Date(saleToView?.date).toLocaleString('es-AR', {
-                      year: 'numeric',
-                      month: 'numeric',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: false,
-                    })}</p>
-                    <p><strong>Cliente:</strong> {saleToView?.customer_details?.name}</p>
-                    <p><strong>Total:</strong> {`${parseFloat(saleToView?.total).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`}</p>
-                    <p><strong>Estado:</strong> {STATE_CHOICES[saleToView?.state] || capitalize(saleToView?.state)}</p>
-                  </AccordionItem>
-                  <AccordionItem key="2" aria-label="Items de la Venta" title="Items de la Venta">
-                    <div className="overflow-x-auto max-h-60 border rounded-md">
-                      {saleToView?.sale_details && saleToView.sale_details.length > 0 ? (
-                        <Table
-                          aria-label="Items de la Venta"
-                          className="border-none min-w-full"
-                          shadow="none"
-                          isCompact
-                          removeWrapper
+              <ModalHeader className="flex flex-col gap-1">
+                Detalles de Cobranza para {selectedCustomer.name}
+              </ModalHeader>
+              <ScrollShadow offset={25} size={50}>
+                <ModalBody>
+                  {selectedCustomer.sales_to_collect.length > 0 ? (
+                    <Accordion>
+                      {selectedCustomer.sales_to_collect.map((sale) => (
+                        <AccordionItem
+                          key={sale.id}
+                          aria-label={`Detalles de la Venta #${sale.id}`}
+                          title={`Venta #${sale.id} - ${new Date(sale.date).toLocaleDateString("es-AR")}`}
                         >
-                          <TableHeader>
-                            <TableColumn className="bg-white text-bold border-b-1">Producto</TableColumn>
-                            <TableColumn className="bg-white text-bold border-b-1">Cantidad</TableColumn>
-                            <TableColumn className="bg-white text-bold border-b-1">Precio</TableColumn>
-                            <TableColumn className="bg-white text-bold border-b-1">Subtotal</TableColumn>
-                          </TableHeader>
-                          <TableBody>
-                            {saleToView.sale_details.map((item, index) => (
-                              <TableRow key={index}>
-                                <TableCell>{item.product_details.name}</TableCell>
-                                <TableCell>{item.quantity}</TableCell>
-                                <TableCell>{`${parseFloat(item.price).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`}</TableCell>
-                                <TableCell>{`${parseFloat(item.subtotal).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      ) : (
-                        <p>No hay items para mostrar.</p>
-                      )}
-                    </div>
-                  </AccordionItem>
-                </Accordion>
-              </ModalBody>
+                          <div className="mb-4">
+                            <p><strong>Fecha:</strong> {new Date(sale.date).toLocaleString("es-AR")}</p>
+                            <p><strong>Total:</strong> {parseFloat(sale.total).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
+                            <p><strong>Total Devoluciones:</strong> {parseFloat(sale.total_returns).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
+                            <p><strong>Total a Cobrar:</strong> {parseFloat(sale.total_to_collect).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
+                            <p><strong>Total Cobrado:</strong> {parseFloat(sale.total_collected).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
+                            <p><strong>Tipo de Venta:</strong> {getChoiceName(SALE_TYPE_CHOICES, sale.sale_type)}</p>
+                            <p><strong>Método de Pago:</strong> {getChoiceName(PAYMENT_METHOD_CHOICES, sale.payment_method)}</p>
+                            <p><strong>Estado:</strong> {getChoiceName(STATE_CHOICES, sale.state)}</p>
+                          </div>
+
+                          <div className="overflow-x-auto border rounded-md">
+                            <Table
+                              aria-label={`Detalles de la Venta #${sale.id}`}
+                              className="border-none min-w-full"
+                              shadow="none"
+                              isCompact
+                              removeWrapper
+                            >
+                              <TableHeader>
+                                <TableColumn className="bg-white text-bold border-b-1">
+                                  Producto
+                                </TableColumn>
+                                <TableColumn className="bg-white text-bold border-b-1">
+                                  Cantidad
+                                </TableColumn>
+                                <TableColumn className="bg-white text-bold border-b-1">
+                                  Precio
+                                </TableColumn>
+                                <TableColumn className="bg-white text-bold border-b-1">
+                                  Subtotal
+                                </TableColumn>
+                              </TableHeader>
+                              <TableBody>
+                                {sale.sale_details.map((item) => (
+                                  <TableRow key={item.id}>
+                                    <TableCell>
+                                      {item.product.name}
+                                    </TableCell>
+                                    <TableCell>{item.quantity}</TableCell>
+                                    <TableCell>
+                                      {parseFloat(item.price).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}
+                                    </TableCell>
+                                    <TableCell>
+                                      {parseFloat(item.subtotal).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                          <div className="justify-between w-full flex gap-1 mt-4">
+                            <div className="flex flex-wrap gap-1">
+                              <Input
+                                size='sm'
+                                type='number'
+                                placeholder='Monto'
+                                min={1}
+                                step={0.01}
+                                className="max-w-[100px]"
+                                aria-label={`Monto a Cobrar de la Venta #${sale.id}`}
+                                startContent={<span className="text-default-400 text-small">$</span>}
+                                value={partialAmounts[sale.id] || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setPartialAmounts(prev => ({
+                                    ...prev,
+                                    [sale.id]: value,
+                                  }));
+                                  setPartialErrors(prev => ({
+                                    ...prev,
+                                    [sale.id]: '',
+                                  }));
+                                }}
+                                status={partialErrors[sale.id] ? 'error' : 'default'}
+                                isInvalid={!!partialErrors[sale.id]}
+                                helperText={partialErrors[sale.id]}
+                              />
+                              <Button
+                                size='sm'
+                                color='secondary'
+                                onPress={() => handlePartialCollect(sale.id, sale.total)}
+                              >
+                                Cobrar Parcialmente
+                              </Button>
+                            </div>
+                            <Button
+                              size='sm'
+                              color='success'
+                              onPress={() => handleCollect(sale.id)}
+                            >
+                              Cobrar Totalmente
+                            </Button>
+                          </div>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  ) : (
+                    <p>No hay ventas para mostrar.</p>
+                  )}
+                </ModalBody>
+              </ScrollShadow>
+
               <ModalFooter>
-                <Button onPress={onViewClose} color="primary">
+                <Button color="primary" onPress={handleCloseDetailsModal}>
                   Cerrar
                 </Button>
               </ModalFooter>

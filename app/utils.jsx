@@ -27,3 +27,31 @@ export const formatDateToISO = (dateObj) => {
 
   return isoDate;
 };
+
+export const formatDateForDisplay = (dateInput) => {
+  if (!dateInput) return null;
+
+  const dateObj = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+
+  if (isNaN(dateObj)) return null;
+
+  const year = dateObj.getFullYear();
+  const month = dateObj.getMonth() + 1;
+  const day = dateObj.getDate();
+  const hour = dateObj.getHours();
+  const minute = dateObj.getMinutes();
+
+  const pad = (num, size = 2) => num.toString().padStart(size, '0');
+
+  const datePart = `${pad(day)}/${pad(month)}/${year}`;
+
+  if (hour === 0 && minute === 0) {
+    return datePart;
+  }
+
+  const timePart = `${pad(hour)}:${pad(minute)}`;
+
+  const formattedDate = `${datePart} ${timePart}`;
+
+  return formattedDate;
+};

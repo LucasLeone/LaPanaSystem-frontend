@@ -24,6 +24,8 @@ import { useRouter, useParams } from "next/navigation";
 import useCustomers from "@/app/hooks/useCustomers";
 import useProducts from "@/app/hooks/useProducts";
 import useReturn from "@/app/hooks/useReturn";
+import useSales from "@/app/hooks/useSales";
+import { formatDateForDisplay } from "@/app/utils";
 
 export default function EditReturnPage() {
   const router = useRouter();
@@ -32,6 +34,7 @@ export default function EditReturnPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [sale, setSale] = useState(null);
 
   const [customer, setCustomer] = useState(null);
   const [date, setDate] = useState(getTodayDate());
@@ -44,6 +47,35 @@ export default function EditReturnPage() {
   const { customers, loading: customersLoading, error: customersError } = useCustomers();
   const { products, loading: productsLoading, error: productsError } = useProducts();
 
+  const [isReturnLoaded, setIsReturnLoaded] = useState(false);
+
+  useEffect(() => {
+    if (return_ && !returnLoading) {
+      setCustomer(return_.sale_details?.customer_details?.id?.toString() || null);
+      setSale(return_.sale_details?.id?.toString() || null);
+      setDate(return_.date ? return_.date.split("T")[0] : getTodayDate());
+      if (return_.return_details && return_.return_details.length > 0) {
+        setReturnDetails(
+          return_.return_details.map((detail) => ({
+            product: detail.product_details.id?.toString() || null,
+            quantity: detail.quantity.toString(),
+          }))
+        );
+      } else {
+        setReturnDetails([{ product: null, quantity: "" }]);
+      }
+      setIsReturnLoaded(true);
+    }
+  }, [return_, returnLoading]);
+
+  // Añade un límite explícito al llamar a useSales
+  const { sales, loading: salesLoading, error: salesError } = useSales({
+    sale_type: 'mayorista',
+    customer: customer,
+    state: 'creada,pendiente_entrega,entregada,cobrada,cobrada_parcial',
+    limit: 100000
+  });
+
   function getTodayDate() {
     const today = new Date();
     const year = today.getFullYear();
@@ -55,21 +87,6 @@ export default function EditReturnPage() {
   const isValidQuantity = (quantity) => {
     return /^\d+(\.\d{1,3})?$/.test(quantity) && parseFloat(quantity) > 0;
   };
-
-  useEffect(() => {
-    setCustomer(return_.customer_details?.id);
-    setDate(return_.date ? return_.date.split("T")[0] : getTodayDate());
-    if (return_.return_details && return_.return_details.length > 0) {
-      setReturnDetails(
-        return_.return_details.map((detail) => ({
-          product: detail.product_details.id,
-          quantity: detail.quantity.toString(),
-        }))
-      );
-    } else {
-      setReturnDetails([{ product: null, quantity: "" }]);
-    }
-  }, [return_]);
 
   const isValidReturn = () => {
     if (!customer) {
@@ -114,7 +131,7 @@ export default function EditReturnPage() {
       if (!detail.product || !isValidQuantity(detail.quantity)) {
         return { ...detail, price: 0, subtotal: 0 };
       }
-      const product = products.find((p) => p.id === parseInt(detail.product));
+      const product = products.find((p) => p.id === parseInt(detail.product, 10));
       if (!product) {
         return { ...detail, price: 0, subtotal: 0 };
       }
@@ -140,8 +157,8 @@ export default function EditReturnPage() {
     }
 
     const returnData = {
-      customer: parseInt(customer, 10),
       ...(date ? { date: new Date(date).toISOString().split("T")[0] } : {}),
+      sale: sale ? parseInt(sale, 10) : null,
       return_details: returnDetails.map((detail) => ({
         product: parseInt(detail.product, 10),
         quantity: parseFloat(detail.quantity),
@@ -168,12 +185,13 @@ export default function EditReturnPage() {
     } finally {
       setLoading(false);
     }
-  }, [customer, date, returnDetails, returnId, router]);
+  }, [date, isValidReturn, returnDetails, returnId, router, sale]);
 
-  if (customersLoading || productsLoading || returnLoading) {
+  // Mostrar cargador si los datos necesarios aún se están cargando
+  if (customersLoading || productsLoading || returnLoading || !isReturnLoaded || salesLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner size="lg" />
+        <Spinner size="lg">Cargando...</Spinner>
       </div>
     );
   }
@@ -203,16 +221,43 @@ export default function EditReturnPage() {
           placeholder="Escribe para buscar y seleccionar un cliente"
           className="w-full"
           aria-label="Seleccionar Cliente"
-          onClear={() => setCustomer(null)}
-          onSelectionChange={(value) => setCustomer(value)}
+          onClear={() => {
+            setCustomer(null);
+            setSale(null);
+          }}
+          onSelectionChange={(value) => {
+            setCustomer(value);
+            setSale(null);
+          }}
           variant="underlined"
-          clearable
-          value={customer ? customer.toString() : ""}
-          selectedKey={customer ? customer.toString() : ""}
+          isClearable
+          selectedKey={customer || ""}
         >
           {customers.map((cust) => (
             <AutocompleteItem key={cust.id.toString()} value={cust.id.toString()}>
               {cust.name}
+            </AutocompleteItem>
+          ))}
+        </Autocomplete>
+
+        <Autocomplete
+          label="Seleccionar Venta"
+          placeholder="Escribe para buscar y seleccionar una venta"
+          className="w-full"
+          aria-label="Seleccionar Venta"
+          variant="underlined"
+          isClearable
+          onSelectionChange={setSale}
+          isDisabled={!customer}
+          selectedKey={sale || ""}
+        >
+          {sales.map((saleItem) => (
+            <AutocompleteItem
+              aria-label={`Venta ${saleItem.id}`}
+              key={saleItem.id.toString()}
+              value={saleItem.id.toString()} // Asegurarse de que el valor sea una cadena
+            >
+              Venta #{saleItem.id} - {saleItem.date ? formatDateForDisplay(saleItem.date) : null}
             </AutocompleteItem>
           ))}
         </Autocomplete>
@@ -222,8 +267,8 @@ export default function EditReturnPage() {
           placeholder="Selecciona una fecha"
           value={date}
           onChange={(e) => {
-            const selectedDate = e.target.value ? new Date(e.target.value) : null;
-            setDate(selectedDate ? e.target.value : "");
+            const selectedDate = e.target.value;
+            setDate(selectedDate);
           }}
           fullWidth
           variant="underlined"
@@ -275,8 +320,7 @@ export default function EditReturnPage() {
                         }
                         variant="underlined"
                         isClearable
-                        value={detail.product ? detail.product.toString() : ""}
-                        selectedKey={detail.product ? detail.product.toString() : ""}
+                        selectedKey={detail.product || ""}
                       >
                         {products.map((prod) => (
                           <AutocompleteItem key={prod.id.toString()} value={prod.id.toString()}>
@@ -295,8 +339,8 @@ export default function EditReturnPage() {
                         }
                         variant="underlined"
                         type="number"
-                        min="0.01"
-                        step="0.01"
+                        min="0.001"
+                        step="0.001"
                         isRequired
                         className="max-w-[100px]"
                       />
@@ -354,7 +398,7 @@ export default function EditReturnPage() {
         <Button
           className="rounded-md bg-black text-white"
           onPress={handleUpdateReturn}
-          isDisabled={loading || customersLoading || productsLoading || returnLoading}
+          isDisabled={loading || customersLoading || productsLoading || salesLoading || returnLoading}
           fullWidth
         >
           {loading ? (

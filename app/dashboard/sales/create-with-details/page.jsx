@@ -196,24 +196,21 @@ export default function CreateSalePage() {
             <Spinner size="lg" />
           </div>
         ) : (
-          <Select
+          <Autocomplete
             aria-label="Cliente"
             label="Cliente"
             placeholder="Seleccione un cliente"
             selectedKeys={customer ? [customer.toString()] : []}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0];
-              setCustomer(selected ? parseInt(selected, 10) : null);
-            }}
+            onSelectionChange={setCustomer}
             variant="underlined"
             isRequired
           >
             {customers.map((cust) => (
-              <SelectItem key={cust.id.toString()} value={cust.id.toString()}>
+              <AutocompleteItem key={cust.id.toString()} value={cust.id.toString()}>
                 {cust.name}
-              </SelectItem>
+              </AutocompleteItem>
             ))}
-          </Select>
+          </Autocomplete>
         )}
 
         <Select

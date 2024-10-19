@@ -29,7 +29,6 @@ import {
 import {
   IconDownload,
   IconPlus,
-  IconSearch,
   IconFilter,
   IconTrash,
   IconChevronUp,
@@ -43,6 +42,7 @@ import { useRouter } from "next/navigation";
 import useReturns from "@/app/hooks/useReturns";
 import useCustomers from "@/app/hooks/useCustomers";
 import useUsers from "@/app/hooks/useUsers";
+import { formatDateForDisplay } from "@/app/utils";
 
 export default function ReturnsPage() {
   const router = useRouter();
@@ -208,6 +208,7 @@ export default function ReturnsPage() {
     { key: "date", label: "Fecha", sortable: true },
     { key: "user", label: "Usuario", sortable: true },
     { key: "customer", label: "Cliente", sortable: true },
+    { key: "sale", label: "Venta", sortable: false },
     { key: "total", label: "Total", sortable: true },
     { key: "actions", label: "Acciones", sortable: false },
   ];
@@ -226,7 +227,8 @@ export default function ReturnsPage() {
           " " +
           returnItem.user_details?.last_name ||
           "",
-        customer: returnItem.customer_details?.name || "",
+        customer: returnItem.sale_details.customer_details?.name || "",
+        sale: "#" + returnItem.sale_details.id + " - " + formatDateForDisplay(returnItem.sale_details.date),
         total: `${parseFloat(returnItem.total).toLocaleString("es-AR", {
           style: "currency",
           currency: "ARS",
