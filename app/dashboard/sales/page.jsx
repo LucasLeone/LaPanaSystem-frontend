@@ -35,16 +35,12 @@ import {
 import {
   IconDownload,
   IconPlus,
-  IconSearch,
   IconFilter,
-  IconTrash,
   IconChevronUp,
   IconChevronDown,
-  IconEdit,
-  IconX,
-  IconDots
+  IconDots,
 } from "@tabler/icons-react";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
@@ -52,6 +48,14 @@ import { capitalize } from "@/app/utils";
 import useSales from "@/app/hooks/useSales";
 import useCustomers from "@/app/hooks/useCustomers";
 import useUsers from "@/app/hooks/useUsers";
+
+const DEFAULT_STATE_FILTERS = [
+  "creada",
+  "pendiente_entrega",
+  "entregada",
+  "cobrada",
+  "cobrada_parcial",
+];
 
 const STATE_CHOICES = [
   { id: "creada", name: "Creada" },
@@ -80,7 +84,7 @@ export default function SalesPage() {
   const router = useRouter();
 
   // Estados Temporales de Filtros
-  const [tempFilterState, setTempFilterState] = useState(new Set());
+  const [tempFilterState, setTempFilterState] = useState(new Set(DEFAULT_STATE_FILTERS));
   const [tempFilterSaleType, setTempFilterSaleType] = useState(null);
   const [tempFilterPaymentMethod, setTempFilterPaymentMethod] = useState(null);
   const [tempFilterCustomer, setTempFilterCustomer] = useState(null);
@@ -90,7 +94,10 @@ export default function SalesPage() {
   const [tempFilterDate, setTempFilterDate] = useState(null);
   const [tempFilterDateRange, setTempFilterDateRange] = useState(null);
 
-  const [filters, setFilters] = useState({});
+  // Inicializar los filtros con los estados preseleccionados
+  const [filters, setFilters] = useState({
+    state: DEFAULT_STATE_FILTERS,
+  });
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortDescriptor, setSortDescriptor] = useState({
@@ -120,7 +127,8 @@ export default function SalesPage() {
     onClose: onFilterModalClose,
   } = useDisclosure();
 
-  const { customers, loading: customersLoading, error: customersError } = useCustomers();
+  const { customers, loading: customersLoading, error: customersError } =
+    useCustomers();
   const { users, loading: usersLoading, error: usersError } = useUsers();
 
   const appliedFilters = useMemo(() => {
@@ -160,6 +168,12 @@ export default function SalesPage() {
     error: salesError,
     fetchSales,
   } = useSales(appliedFilters, (page - 1) * rowsPerPage);
+
+  // Aplicar filtros automáticamente al cargar la página
+  useEffect(() => {
+    fetchSales(appliedFilters, (page - 1) * rowsPerPage, rowsPerPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, searchQuery, sortDescriptor, page]);
 
   const applyFilters = () => {
     const newFilters = {};
@@ -204,7 +218,11 @@ export default function SalesPage() {
 
   // Función para limpiar los filtros
   const clearFilters = () => {
-    setTempFilterState(new Set());
+    // Restablecer los estados preseleccionados
+    setTempFilterState(new Set(DEFAULT_STATE_FILTERS));
+    setFilters({
+      state: DEFAULT_STATE_FILTERS,
+    });
     setTempFilterSaleType(null);
     setTempFilterPaymentMethod(null);
     setTempFilterCustomer(null);
@@ -218,7 +236,7 @@ export default function SalesPage() {
       column: null,
       direction: null,
     });
-    setFilters({});
+    setPage(1);
   };
 
   const handleCancelClick = useCallback(
@@ -239,12 +257,20 @@ export default function SalesPage() {
           Authorization: `Token ${token}`,
         },
       });
+      // Refrescar las ventas después de cancelar
       fetchSales(filters, (page - 1) * rowsPerPage, rowsPerPage);
       onCancelClose();
     } catch (error) {
       console.error("Error al cancelar la venta:", error);
     }
-  }, [saleToCancel, fetchSales, filters, onCancelClose, page, rowsPerPage]);
+  }, [
+    saleToCancel,
+    fetchSales,
+    filters,
+    onCancelClose,
+    page,
+    rowsPerPage,
+  ]);
 
   const handleViewClick = useCallback(
     (sale) => {
@@ -286,7 +312,8 @@ export default function SalesPage() {
   const rows = useMemo(
     () =>
       sales.map((sale) => {
-        const isCancelDisabled = sale.state === "anulada" || sale.state === "cancelada";
+        const isCancelDisabled =
+          sale.state === "anulada" || sale.state === "cancelada";
 
         return {
           id: sale.id,
@@ -304,12 +331,20 @@ export default function SalesPage() {
             style: "currency",
             currency: "ARS",
           })}`,
-          total_collected: `${parseFloat(sale.total_collected).toLocaleString("es-AR", {
-            style: "currency",
-            currency: "ARS",
-          })}`,
-          sale_type: SALE_TYPE_CHOICES.find(item => item.id === sale.sale_type)?.name || sale.sale_type,
-          payment_method: PAYMENT_METHOD_CHOICES.find(item => item.id === sale.payment_method)?.name || sale.payment_method,
+          total_collected: `${parseFloat(sale.total_collected).toLocaleString(
+            "es-AR",
+            {
+              style: "currency",
+              currency: "ARS",
+            }
+          )}`,
+          sale_type:
+            SALE_TYPE_CHOICES.find((item) => item.id === sale.sale_type)
+              ?.name || sale.sale_type,
+          payment_method:
+            PAYMENT_METHOD_CHOICES.find(
+              (item) => item.id === sale.payment_method
+            )?.name || sale.payment_method,
           state:
             STATE_CHOICES.find((item) => item.id === sale.state)?.name ||
             sale.state,
@@ -322,19 +357,36 @@ export default function SalesPage() {
                     <IconDots className="w-5" />
                   </Button>
                 </DropdownTrigger>
-                <DropdownMenu aria-label="Opciones de Venta" disabledKeys={isCancelDisabled ? ["cancel"] : []}>
-                  <DropdownItem key="view" onPress={() => handleViewClick(sale)}>
+                <DropdownMenu
+                  aria-label="Opciones de Venta"
+                  disabledKeys={isCancelDisabled ? ["cancel"] : []}
+                >
+                  <DropdownItem
+                    key="view"
+                    onPress={() => handleViewClick(sale)}
+                  >
                     Ver Detalles
                   </DropdownItem>
-                  <DropdownItem key="edit" onPress={() => handleEditClick(sale)}>
+                  <DropdownItem
+                    key="edit"
+                    onPress={() => handleEditClick(sale)}
+                  >
                     Editar
                   </DropdownItem>
                   <DropdownItem
                     key="cancel"
                     onPress={() => handleCancelClick(sale)}
-                    className={isCancelDisabled ? "text-default-400" : "text-danger"}
+                    className={
+                      isCancelDisabled
+                        ? "text-default-400"
+                        : "text-danger"
+                    }
                   >
-                    {(sale.state === "creada" || sale.state === "pendiente_entrega" || sale.state === "entregada") ? "Cancelar" : "Anular"}
+                    {["creada", "pendiente_entrega", "entregada"].includes(
+                      sale.state
+                    )
+                      ? "Cancelar"
+                      : "Anular"}
                   </DropdownItem>
                 </DropdownMenu>
               </Dropdown>
@@ -376,8 +428,9 @@ export default function SalesPage() {
 
       return (
         <div
-          className={`flex items-center ${isSortable ? "cursor-pointer" : ""
-            }`}
+          className={`flex items-center ${
+            isSortable ? "cursor-pointer" : ""
+          }`}
           onClick={() => isSortable && handleSortChange(column.key)}
           aria-sort={isSorted ? direction : "none"}
         >
@@ -474,7 +527,9 @@ export default function SalesPage() {
                 <TableRow key={item.id}>
                   {columns.map((column) => {
                     if (column.key === "id") {
-                      return <TableCell key={column.key}>{item.id}</TableCell>;
+                      return (
+                        <TableCell key={column.key}>{item.id}</TableCell>
+                      );
                     }
                     if (column.key === "actions") {
                       return (
@@ -538,19 +593,18 @@ export default function SalesPage() {
                       placeholder="Selecciona uno o más estados"
                       className="w-full"
                       aria-label="Filtro de Estado"
-                      onClear={() => setTempFilterState(new Set())}
+                      onClear={() =>
+                        setTempFilterState(new Set(DEFAULT_STATE_FILTERS))
+                      }
                       onSelectionChange={(value) =>
                         setTempFilterState(value ? new Set(value) : new Set())
                       }
-                      selectedKeys={tempFilterState}
+                      selectedKeys={tempFilterState} // Usar selectedKeys aquí
                       variant="underlined"
                       selectionMode="multiple"
                     >
                       {STATE_CHOICES.map((state) => (
-                        <SelectItem
-                          key={state.id}
-                          value={state.id}
-                        >
+                        <SelectItem key={state.id} value={state.id}>
                           {state.name}
                         </SelectItem>
                       ))}
@@ -566,16 +620,19 @@ export default function SalesPage() {
                       aria-label="Filtro de Tipo de Venta"
                       onClear={() => setTempFilterSaleType(null)}
                       onSelectionChange={(value) =>
-                        setTempFilterSaleType(value ? Array.from(value)[0] : null)
+                        setTempFilterSaleType(
+                          value ? Array.from(value)[0] : null
+                        )
                       }
-                      selectedKeys={tempFilterSaleType ? new Set([tempFilterSaleType]) : new Set()}
+                      selectedKeys={
+                        tempFilterSaleType
+                          ? new Set([tempFilterSaleType])
+                          : new Set()
+                      }
                       variant="underlined"
                     >
                       {SALE_TYPE_CHOICES.map((type) => (
-                        <SelectItem
-                          key={type.id}
-                          value={type.id}
-                        >
+                        <SelectItem key={type.id} value={type.id}>
                           {type.name}
                         </SelectItem>
                       ))}
@@ -591,16 +648,19 @@ export default function SalesPage() {
                       aria-label="Filtro de Método de Pago"
                       onClear={() => setTempFilterPaymentMethod(null)}
                       onSelectionChange={(value) =>
-                        setTempFilterPaymentMethod(value ? Array.from(value)[0] : null)
+                        setTempFilterPaymentMethod(
+                          value ? Array.from(value)[0] : null
+                        )
                       }
-                      selectedKeys={tempFilterPaymentMethod ? new Set([tempFilterPaymentMethod]) : new Set()}
+                      selectedKeys={
+                        tempFilterPaymentMethod
+                          ? new Set([tempFilterPaymentMethod])
+                          : new Set()
+                      }
                       variant="underlined"
                     >
                       {PAYMENT_METHOD_CHOICES.map((method) => (
-                        <SelectItem
-                          key={method.id}
-                          value={method.id}
-                        >
+                        <SelectItem key={method.id} value={method.id}>
                           {method.name}
                         </SelectItem>
                       ))}
@@ -667,7 +727,9 @@ export default function SalesPage() {
                         placeholder="Total Mínimo"
                         type="number"
                         value={tempFilterMinTotal}
-                        onChange={(e) => setTempFilterMinTotal(e.target.value)}
+                        onChange={(e) =>
+                          setTempFilterMinTotal(e.target.value)
+                        }
                         className="w-full"
                         aria-label="Filtro de Total Mínimo"
                         variant="underlined"
@@ -687,7 +749,9 @@ export default function SalesPage() {
                         placeholder="Total Máximo"
                         type="number"
                         value={tempFilterMaxTotal}
-                        onChange={(e) => setTempFilterMaxTotal(e.target.value)}
+                        onChange={(e) =>
+                          setTempFilterMaxTotal(e.target.value)
+                        }
                         className="w-full"
                         aria-label="Filtro de Total Máximo"
                         variant="underlined"
@@ -735,7 +799,11 @@ export default function SalesPage() {
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={clearFilters} color="warning">
+                <Button
+                  variant="light"
+                  onPress={clearFilters}
+                  color="warning"
+                >
                   Limpiar Filtros
                 </Button>
                 <Button onPress={applyFilters} color="primary">
@@ -825,10 +893,13 @@ export default function SalesPage() {
                     </p>
                     <p>
                       <strong>Total:</strong>{" "}
-                      {`${parseFloat(saleToView?.total).toLocaleString("es-AR", {
-                        style: "currency",
-                        currency: "ARS",
-                      })}`}
+                      {`${parseFloat(saleToView?.total).toLocaleString(
+                        "es-AR",
+                        {
+                          style: "currency",
+                          currency: "ARS",
+                        }
+                      )}`}
                     </p>
                     <p>
                       <strong>Tipo de Venta:</strong>{" "}
@@ -852,7 +923,7 @@ export default function SalesPage() {
                   >
                     <div className="overflow-x-auto max-h-60 border rounded-md">
                       {saleToView?.sale_details &&
-                        saleToView.sale_details.length > 0 ? (
+                      saleToView.sale_details.length > 0 ? (
                         <Table
                           aria-label="Items de la Venta"
                           className="border-none min-w-full"

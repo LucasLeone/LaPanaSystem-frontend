@@ -475,10 +475,10 @@ export default function CollectPage() {
                                 </TableColumn>
                               </TableHeader>
                               <TableBody>
-                                {sale.sale_details.map((item) => (
+                                {sale.sale_details.sale_details.map((item) => (
                                   <TableRow key={item.id}>
                                     <TableCell>
-                                      {item.product.name}
+                                      {item.product_details.name}
                                     </TableCell>
                                     <TableCell>{item.quantity}</TableCell>
                                     <TableCell>
