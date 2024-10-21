@@ -48,6 +48,7 @@ import { capitalize } from "@/app/utils";
 import useSales from "@/app/hooks/useSales";
 import useCustomers from "@/app/hooks/useCustomers";
 import useUsers from "@/app/hooks/useUsers";
+import toast from "react-hot-toast";
 
 const DEFAULT_STATE_FILTERS = [
   "creada",
@@ -82,6 +83,8 @@ const PAYMENT_METHOD_CHOICES = [
 
 export default function SalesPage() {
   const router = useRouter();
+
+  const [totalFastSale, setTotalFastSale] = useState("");
 
   // Estados Temporales de Filtros
   const [tempFilterState, setTempFilterState] = useState(new Set(DEFAULT_STATE_FILTERS));
@@ -295,6 +298,26 @@ export default function SalesPage() {
     [router]
   );
 
+  const handleCreateSale = useCallback(async () => {
+    const token = Cookies.get("access_token");
+    try {
+      await api.post("/sales/create-fast-sale/",
+        {
+          total: parseFloat(totalFastSale),
+        }, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      toast.success("Venta creada exitosamente.");
+      setTotalFastSale("");
+      fetchSales(filters, (page - 1) * rowsPerPage);
+    } catch (error) {
+      console.error("Error al crear la venta:", error);
+      toast.error("Error al crear la venta.");
+    }
+  }, [fetchSales, filters, page, totalFastSale]);
+
   const columns = [
     { key: "id", label: "#", sortable: true },
     { key: "date", label: "Fecha", sortable: true },
@@ -428,9 +451,8 @@ export default function SalesPage() {
 
       return (
         <div
-          className={`flex items-center ${
-            isSortable ? "cursor-pointer" : ""
-          }`}
+          className={`flex items-center ${isSortable ? "cursor-pointer" : ""
+            }`}
           onClick={() => isSortable && handleSortChange(column.key)}
           aria-sort={isSorted ? direction : "none"}
         >
@@ -478,8 +500,31 @@ export default function SalesPage() {
         </div>
       </div>
 
-      {/* Búsqueda y Filtros */}
-      <div className="flex flex-col md:flex-row md:justify-end items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
+      {/* Crear venta rapida y Filtros */}
+      <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6 gap-2">
+        <div className="flex gap-2 min-w-full md:min-w-[32vw] flex-wrap-reverse">
+          <Input
+            label="Total"
+            placeholder="Ingrese el total de la venta (Ej: 4900.53)"
+            variant="underlined"
+            type="number"
+            step="0.01"
+            min="0"
+            value={totalFastSale}
+            onChange={(e) => setTotalFastSale(e.target.value)}
+            className="flex-1 w-100"
+            aria-label="Total de la Venta"
+            startContent={
+              <div className="pointer-events-none flex items-center">
+                <span className="text-default-400 text-small">$</span>
+              </div>
+            }
+            isRequired
+          />
+          <Button color="primary" variant="ghost" className="w-100" onPress={handleCreateSale}>
+            Crear venta
+          </Button>
+        </div>
         <Tooltip content="Aplicar Filtros">
           <Button
             variant="bordered"
@@ -923,7 +968,7 @@ export default function SalesPage() {
                   >
                     <div className="overflow-x-auto max-h-60 border rounded-md">
                       {saleToView?.sale_details &&
-                      saleToView.sale_details.length > 0 ? (
+                        saleToView.sale_details.length > 0 ? (
                         <Table
                           aria-label="Items de la Venta"
                           className="border-none min-w-full"

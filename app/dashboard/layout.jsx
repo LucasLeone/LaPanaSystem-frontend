@@ -51,9 +51,9 @@ export default function DashboardLayout({ children }) {
     { label: "Productos", path: "/dashboard/products", icon: <IconPackage /> },
     { label: "Clientes", path: "/dashboard/customers", icon: <IconUsersGroup /> },
     { label: "Gastos", path: "/dashboard/expenses", icon: <IconCreditCard /> },
+    { label: "Empleados", path: "/dashboard/employees", icon: <IconUsers /> },
     { label: "Ventas", path: "/dashboard/sales", icon: <IconShoppingCart /> },
     { label: "Devoluciones", path: "/dashboard/returns", icon: <IconArrowBackUp /> },
-    { label: "Empleados", path: "/dashboard/employees", icon: <IconUsers /> },
     { label: "Repartir", path: "/dashboard/delivery", icon: <IconTruckDelivery /> },
     { label: "Cobrar", path: "/dashboard/collect", icon: <IconCash /> },
     { 
