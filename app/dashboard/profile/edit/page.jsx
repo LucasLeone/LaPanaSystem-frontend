@@ -9,10 +9,12 @@ import { IconArrowLeft } from "@tabler/icons-react";
 
 export default function EditProfilePage() {
   const [userData, setUserData] = useState({
+    username: "",
     first_name: "",
     last_name: "",
     email: "",
     phone_number: "",
+    user_type: "",
   });
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -21,6 +23,7 @@ export default function EditProfilePage() {
     const fetchUserData = async () => {
       const token = Cookies.get("access_token");
       const user = JSON.parse(Cookies.get("user"));
+
       try {
         const response = await api.get(`/users/${user.username}/`, {
           headers: {
@@ -50,6 +53,8 @@ export default function EditProfilePage() {
       await api.put(
         `/users/${user.username}/`,
         {
+          username: userData.username, // Incluir username
+          user_type: userData.user_type, // Incluir user_type
           first_name: userData.first_name,
           last_name: userData.last_name,
           email: userData.email,
@@ -74,7 +79,7 @@ export default function EditProfilePage() {
       </div>
     );
   }
-  
+
   return (
     <div className="container px-4 py-6 md:w-2/3 lg:w-1/2">
       <div className="flex items-center mb-4 gap-1">
