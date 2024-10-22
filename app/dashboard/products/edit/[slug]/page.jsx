@@ -154,7 +154,7 @@ export default function EditProductPage() {
   if (initialLoading || categoriesLoading || brandsLoading || productLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner size="lg" />
+        <Spinner size="lg">Cargando...</Spinner>
       </div>
     );
   }

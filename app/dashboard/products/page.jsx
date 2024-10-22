@@ -382,7 +382,7 @@ export default function ProductsPage() {
       <div className="overflow-x-auto border rounded-md">
         {productsLoading || brandsLoading || categoriesLoading ? (
           <div className="flex justify-center items-center p-6">
-            <Spinner size="lg" />
+            <Spinner size="lg">Cargando...</Spinner>
           </div>
         ) : productsError || brandsError || categoriesError ? (
           <div className="text-red-500 text-center p-6">

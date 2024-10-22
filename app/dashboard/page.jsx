@@ -15,7 +15,7 @@ import {
   IconTruckDelivery,
   IconCash
 } from "@tabler/icons-react";
-import NextLink from 'next/link'; // Importar Link de Next.js
+import NextLink from 'next/link';
 
 export default function DashboardHome() {
   const [user, setUser] = useState(null);
@@ -58,7 +58,7 @@ export default function DashboardHome() {
 
       {/* Texto Descriptivo */}
       <p className="mt-4">
-        Bienvenido a tu dashboard. Aquí puedes gestionar todas las áreas clave de tu negocio de manera eficiente.
+        Bienvenido al dashboard de PanaSystem. Aquí puedes gestionar todas las áreas de tu panadería de manera eficiente.
       </p>
 
       {/* Grid de Tarjetas */}
@@ -66,7 +66,6 @@ export default function DashboardHome() {
         {/* Estadísticas */}
         <NextLink href="/estadisticas" passHref>
           <Card
-            as="a"
             shadow="none"
             className="border-1 rounded-md hover:shadow-lg transition-shadow w-full md:h-32"
           >
@@ -76,7 +75,7 @@ export default function DashboardHome() {
             </CardHeader>
             <CardBody>
               <p>
-                Resumen de ventas, clientes activos y rendimiento de empleados.
+                Estadísticas y gráficos de ventas, gastos y clientes.
               </p>
             </CardBody>
           </Card>
@@ -85,7 +84,6 @@ export default function DashboardHome() {
         {/* Productos */}
         <NextLink href="/dashboard/products" passHref>
           <Card
-            as="a"
             shadow="none"
             className="border-1 rounded-md hover:shadow-lg transition-shadow w-full md:h-32"
           >
@@ -95,7 +93,7 @@ export default function DashboardHome() {
             </CardHeader>
             <CardBody>
               <p>
-                Gestiona tu catálogo, inventario y productos más vendidos.
+                Gestiona los productos de tu panadería.
               </p>
             </CardBody>
           </Card>
@@ -104,7 +102,6 @@ export default function DashboardHome() {
         {/* Clientes */}
         <NextLink href="/dashboard/customers" passHref>
           <Card
-            as="a"
             shadow="none"
             className="border-1 rounded-md hover:shadow-lg transition-shadow w-full md:h-32"
           >
@@ -114,7 +111,7 @@ export default function DashboardHome() {
             </CardHeader>
             <CardBody>
               <p>
-                Administra la información y segmenta a tus clientes.
+                Administra tus clientes y sus pedidos diarios en caso de mayoristas.
               </p>
             </CardBody>
           </Card>
@@ -123,7 +120,6 @@ export default function DashboardHome() {
         {/* Gastos */}
         <NextLink href="/dashboard/expenses" passHref>
           <Card
-            as="a"
             shadow="none"
             className="border-1 rounded-md hover:shadow-lg transition-shadow w-full md:h-32"
           >
@@ -133,7 +129,7 @@ export default function DashboardHome() {
             </CardHeader>
             <CardBody>
               <p>
-                Controla y analiza los gastos operativos y de marketing.
+                Controla los gastos operativos.
               </p>
             </CardBody>
           </Card>
@@ -142,7 +138,6 @@ export default function DashboardHome() {
         {/* Ventas */}
         <NextLink href="/dashboard/sales" passHref>
           <Card
-            as="a"
             shadow="none"
             className="border-1 rounded-md hover:shadow-lg transition-shadow w-full md:h-32"
           >
@@ -152,7 +147,7 @@ export default function DashboardHome() {
             </CardHeader>
             <CardBody>
               <p>
-                Monitorea tus ventas y compara con objetivos mensuales.
+                Registra y lista las ventas realizadas.
               </p>
             </CardBody>
           </Card>
@@ -161,7 +156,6 @@ export default function DashboardHome() {
         {/* Devoluciones */}
         <NextLink href="/dashboard/returns" passHref>
           <Card
-            as="a"
             shadow="none"
             className="border-1 rounded-md hover:shadow-lg transition-shadow w-full md:h-32"
           >
@@ -171,7 +165,7 @@ export default function DashboardHome() {
             </CardHeader>
             <CardBody>
               <p>
-                Gestiona las devoluciones y analiza sus motivos.
+                Gestiona las devoluciones para realizar el cobro correspondiente.
               </p>
             </CardBody>
           </Card>
@@ -180,7 +174,6 @@ export default function DashboardHome() {
         {/* Empleados */}
         <NextLink href="/dashboard/employees" passHref>
           <Card
-            as="a"
             shadow="none"
             className="border-1 rounded-md hover:shadow-lg transition-shadow w-full md:h-32"
           >
@@ -190,7 +183,7 @@ export default function DashboardHome() {
             </CardHeader>
             <CardBody>
               <p>
-                Administra información y desempeño de tus empleados.
+                Administra información de tus empleados.
               </p>
             </CardBody>
           </Card>
@@ -199,7 +192,6 @@ export default function DashboardHome() {
         {/* Repartir */}
         <NextLink href="/dashboard/delivery" passHref>
           <Card
-            as="a"
             shadow="none"
             className="border-1 rounded-md hover:shadow-lg transition-shadow w-full md:h-32"
           >
@@ -209,7 +201,7 @@ export default function DashboardHome() {
             </CardHeader>
             <CardBody>
               <p>
-                Optimiza las rutas de reparto y monitorea entregas.
+                Empieza el proceso de reparto de pedidos.
               </p>
             </CardBody>
           </Card>
@@ -218,7 +210,6 @@ export default function DashboardHome() {
         {/* Cobrar */}
         <NextLink href="/dashboard/collect" passHref>
           <Card
-            as="a"
             shadow="none"
             className="border-1 rounded-md hover:shadow-lg transition-shadow w-full md:h-32"
           >
@@ -228,7 +219,25 @@ export default function DashboardHome() {
             </CardHeader>
             <CardBody>
               <p>
-                Gestiona pagos pendientes y registra transacciones.
+                Realiza el cobro de las ventas realizadas.
+              </p>
+            </CardBody>
+          </Card>
+        </NextLink>
+
+        {/* Perfil */}
+        <NextLink href="/dashboard/profile" passHref>
+          <Card
+            shadow="none"
+            className="border-1 rounded-md hover:shadow-lg transition-shadow w-full md:h-32"
+          >
+            <CardHeader className="font-semibold gap-2">
+              <IconUser className="w-6" />
+              Perfil
+            </CardHeader>
+            <CardBody>
+              <p>
+                Administra tu información personal.
               </p>
             </CardBody>
           </Card>

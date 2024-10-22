@@ -246,7 +246,7 @@ export default function CreateEmployeePage() {
           fullWidth
         >
           {loading ? (
-            <Spinner size="sm" />
+            <Spinner size="lg">Cargando...</Spinner>
           ) : (
             <>
               <IconPlus className="h-4 mr-1" /> Crear Empleado

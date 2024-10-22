@@ -124,7 +124,7 @@ export default function CreateProductPage() {
   if (categoriesLoading || brandsLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner size="lg" />
+        <Spinner size="lg">Cargando...</Spinner>
       </div>
     );
   }

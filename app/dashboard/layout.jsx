@@ -47,7 +47,7 @@ export default function DashboardLayout({ children }) {
 
   const menuItems = [
     { label: "Inicio", path: "/dashboard", icon: <IconHome /> },
-    { label: "Estadísticas", path: "/dashboard/statitics", icon: <IconChartBar /> },
+    { label: "Estadísticas", path: "/dashboard/statistics", icon: <IconChartBar /> },
     { label: "Productos", path: "/dashboard/products", icon: <IconPackage /> },
     { label: "Clientes", path: "/dashboard/customers", icon: <IconUsersGroup /> },
     { label: "Gastos", path: "/dashboard/expenses", icon: <IconCreditCard /> },

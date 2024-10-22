@@ -141,7 +141,7 @@ export default function CreateExpensePage() {
 
       {isLoading && (
         <div className="flex justify-center items-center my-6">
-          <Spinner size="lg" />
+          <Spinner size="lg">Cargando...</Spinner>
         </div>
       )}
 

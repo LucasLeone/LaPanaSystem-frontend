@@ -205,7 +205,7 @@ export default function EditSalePage() {
   if (loading && !customersLoading && !productsLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner size="lg" />
+        <Spinner size="lg">Cargando...</Spinner>
       </div>
     );
   }
@@ -228,7 +228,7 @@ export default function EditSalePage() {
       <div className="space-y-4 mt-4">
         {customersLoading ? (
           <div className="flex justify-center items-center">
-            <Spinner size="lg" />
+            <Spinner size="lg">Cargando...</Spinner>
           </div>
         ) : (
           <Autocomplete

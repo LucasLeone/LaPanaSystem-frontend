@@ -164,7 +164,7 @@ export default function CreateCustomerPage() {
           isDisabled={loading}
           fullWidth
         >
-          {loading ? <Spinner size="sm" /> : <><IconPlus className="h-4" /> Crear Cliente</>}
+          {loading ? <Spinner size="sm">Cargando...</Spinner> : <><IconPlus className="h-4" /> Crear Cliente</>}
         </Button>
       </div>
     </div>

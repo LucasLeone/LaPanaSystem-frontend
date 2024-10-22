@@ -128,7 +128,7 @@ export default function EditEmployeePage() {
   if (userLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner size="lg" />
+        <Spinner size="lg">Cargando...</Spinner>
       </div>
     );
   }
@@ -257,7 +257,7 @@ export default function EditEmployeePage() {
           fullWidth
         >
           {loading ? (
-            <Spinner size="sm" />
+            <Spinner size="sm">Cargando...</Spinner>
           ) : (
             <>
               <IconEdit className="h-4 mr-1" /> Actualizar Empleado

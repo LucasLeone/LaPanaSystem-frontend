@@ -384,7 +384,7 @@ export default function ReturnsPage() {
       <div className="overflow-x-auto border rounded-md">
         {returnsLoading ? (
           <div className="flex justify-center items-center p-6">
-            <Spinner size="lg" />
+            <Spinner size="lg">Cargando...</Spinner>
           </div>
         ) : returnsError ? (
           <div className="text-red-500 text-center p-6">{returnsError}</div>

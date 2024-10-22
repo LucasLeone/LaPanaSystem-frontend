@@ -25,7 +25,9 @@ export default function LoginPage() {
     Cookies.remove("access_token");
   }, []);
   
-  const handleLogin = async () => {
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
     if (!username || !password) {
       setError("Por favor, complete todos los campos.");
       return;
@@ -47,7 +49,7 @@ export default function LoginPage() {
         setError("Ha ocurrido un error al iniciar sesión.");
       }
     } catch (error) {
-      setError("Credenciales invalidas.");
+      setError("Credenciales inválidas.");
     }
   }
 
@@ -55,7 +57,7 @@ export default function LoginPage() {
     <div className='container mx-auto grid max-w-lg p-4 border rounded-2xl m-4 mt-32 bg-white'>
       <p className="text-center text-2xl basis-full font-bold">Iniciar sesión</p>
       {error && <Code color='danger' className='text-wrap'>{error}</Code>}
-      <form className="flex flex-col gap-2 mt-2">
+      <form className="flex flex-col gap-2 mt-2" onSubmit={handleLogin}>
         <Input
           label="Nombre de usuario"
           placeholder="Nombre de usuario"
@@ -91,9 +93,9 @@ export default function LoginPage() {
           }
         />
         <Button
-          onClick={handleLogin}
           className='mt-2 font-bold text-white'
           color='primary'
+          type="submit"
         >
           Iniciar sesión
         </Button>

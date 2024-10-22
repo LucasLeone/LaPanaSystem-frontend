@@ -97,7 +97,7 @@ export default function EditExpenseCategoryPage() {
   if (categoryLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner size="lg" />
+        <Spinner size="lg">Cargando...</Spinner>
       </div>
     );
   }
@@ -151,7 +151,7 @@ export default function EditExpenseCategoryPage() {
           fullWidth
         >
           {loading ? (
-            <Spinner size="sm" />
+            <Spinner size="lg">Cargando...</Spinner>
           ) : (
             <>
               <IconEdit className="h-4 mr-1" /> Actualizar Categoría

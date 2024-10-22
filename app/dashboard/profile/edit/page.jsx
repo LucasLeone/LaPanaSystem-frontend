@@ -75,7 +75,7 @@ export default function EditProfilePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <Spinner label="Cargando..." />
+        <Spinner size="lg">Cargando...</Spinner>
       </div>
     );
   }

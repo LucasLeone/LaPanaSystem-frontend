@@ -193,7 +193,7 @@ export default function CreateSalePage() {
       <div className="space-y-4 mt-4">
         {customersLoading ? (
           <div className="flex justify-center items-center">
-            <Spinner size="lg" />
+            <Spinner size="lg">Cargando...</Spinner>
           </div>
         ) : (
           <Autocomplete

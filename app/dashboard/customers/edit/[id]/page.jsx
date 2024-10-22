@@ -80,7 +80,7 @@ export default function EditCustomerPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner />
+        <Spinner size="lg">Cargando...</Spinner>
       </div>
     );
   }
@@ -101,7 +101,7 @@ export default function EditCustomerPage() {
         </Link>
         <p className="text-2xl font-bold">Editar Cliente - #{id}</p>
       </div>
-      
+
       {errorUpdate && <Code color='danger' className='text-wrap'>{errorUpdate}</Code>}
 
       <div className="space-y-4 mt-4">
