@@ -34,8 +34,11 @@ const useReturns = (filters = {}, offset = 0, limit = 0) => {
       setReturns(response.data.results || []);
       setTotalCount(response.data.count);
     } catch (err) {
-      console.error(err);
-      setError('Error al cargar las devoluciones.');
+      if (err.response && err.response.data.detail === "Usted no tiene permiso para realizar esta acción.") {
+        setError("No tiene permisos para esta acción.");
+      } else {
+        setError("Error al cargar las devoluciones.");
+      }
     } finally {
       setLoading(false);
     }

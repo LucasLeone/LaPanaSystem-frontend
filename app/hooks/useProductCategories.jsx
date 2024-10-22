@@ -32,8 +32,11 @@ const useProductCategories = (offset = 0, limit = 100000) => {
       setCategories(response.data.results || []);
       setTotalCount(response.data.count);
     } catch (err) {
-      console.error('Error al cargar las categorías:', err);
-      setError('Error al cargar las categorías.');
+      if (err.response && err.response.data.detail === "Usted no tiene permiso para realizar esta acción.") {
+        setError("No tiene permisos para esta acción.");
+      } else {
+        setError("Error al cargar las categorías de producto.");
+      }
     } finally {
       setLoading(false);
     }

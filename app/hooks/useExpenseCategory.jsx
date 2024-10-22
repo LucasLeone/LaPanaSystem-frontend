@@ -20,8 +20,11 @@ const useExpenseCategory = (expenseCategoryId) => {
       });
       setExpenseCategory(response.data);
     } catch (err) {
-      console.error(err);
-      setError('Error al cargar la categoria de gastos.');
+      if (err.response && err.response.data.detail === "Usted no tiene permiso para realizar esta acción.") {
+        setError("No tiene permisos para esta acción.");
+      } else {
+        setError("Error al cargar la categoría de gasto.");
+      }
     } finally {
       setLoading(false);
     }

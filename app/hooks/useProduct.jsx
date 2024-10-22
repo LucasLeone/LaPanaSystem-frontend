@@ -20,8 +20,11 @@ const useProduct = (productSlug) => {
       });
       setProduct(response.data);
     } catch (err) {
-      console.error(err);
-      setError('Error al cargar el producto.');
+      if (err.response && err.response.data.detail === "Usted no tiene permiso para realizar esta acción.") {
+        setError("No tiene permisos para esta acción.");
+      } else {
+        setError("Error al cargar el producto.");
+      }
     } finally {
       setLoading(false);
     }

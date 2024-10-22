@@ -17,7 +17,7 @@ export default function ProfilePage() {
       const token = Cookies.get("access_token");
       const user = JSON.parse(Cookies.get("user"));
       try {
-        const response = await api.get(`/users/${user.username}/`, {
+        const response = await api.get(`/users/profile/`, {
           headers: {
             Authorization: `Token ${token}`,
           },

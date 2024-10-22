@@ -32,8 +32,11 @@ const useProductBrands = (offset = 0, limit = 100000) => {
       setProductBrands(response.data.results || []);
       setTotalCount(response.data.count);
     } catch (err) {
-      console.error('Error al cargar las marcas:', err);
-      setError('Error al cargar las marcas.');
+      if (err.response && err.response.data.detail === "Usted no tiene permiso para realizar esta acción.") {
+        setError("No tiene permisos para esta acción.");
+      } else {
+        setError("Error al cargar las marcas de productos..");
+      }
     } finally {
       setLoading(false);
     }
