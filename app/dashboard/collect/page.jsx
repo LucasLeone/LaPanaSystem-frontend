@@ -197,6 +197,10 @@ export default function CollectPage() {
     setIsConfirmModalOpen(true);
   }, []);
 
+  const handleAddReturn = useCallback((saleId, customerId) => {
+    router.push(`/dashboard/returns/create?sale=${saleId}&customer=${customerId}`);
+  }, [router]);
+
   // Función para manejar la confirmación y realizar la cobranza masiva
   const handleConfirmCollectAllSales = useCallback(async (customer) => {
     const token = Cookies.get("access_token");
@@ -307,7 +311,7 @@ export default function CollectPage() {
 
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Cobrar</p>
-        <div className="flex flex-wrap gap-2">
+        {/* <div className="flex flex-wrap gap-2">
           <Tooltip content="Exportar ventas">
             <Button variant="bordered" className="rounded-md border-1.5">
               <IconDownload className="h-4 mr-1" />
@@ -320,7 +324,7 @@ export default function CollectPage() {
               Filtrar
             </Button>
           </Tooltip>
-        </div>
+        </div> */}
       </div>
 
       <div className="overflow-x-auto border rounded-md">
@@ -447,9 +451,9 @@ export default function CollectPage() {
                             <p><strong>Total Devoluciones:</strong> {parseFloat(sale.total_returns).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
                             <p><strong>Total a Cobrar:</strong> {parseFloat(sale.total_to_collect).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
                             <p><strong>Total Cobrado:</strong> {parseFloat(sale.total_collected).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
-                            <p><strong>Tipo de Venta:</strong> {getChoiceName(SALE_TYPE_CHOICES, sale.sale_type)}</p>
-                            <p><strong>Método de Pago:</strong> {getChoiceName(PAYMENT_METHOD_CHOICES, sale.payment_method)}</p>
-                            <p><strong>Estado:</strong> {getChoiceName(STATE_CHOICES, sale.state)}</p>
+                            <p><strong>Tipo de Venta:</strong> {getChoiceName(SALE_TYPE_CHOICES, sale.sale_details.sale_type)}</p>
+                            <p><strong>Método de Pago:</strong> {getChoiceName(PAYMENT_METHOD_CHOICES, sale.sale_details.payment_method)}</p>
+                            <p><strong>Estado:</strong> {getChoiceName(STATE_CHOICES, sale.sale_details.state)}</p>
                           </div>
 
                           <div className="overflow-x-auto border rounded-md">
@@ -527,13 +531,22 @@ export default function CollectPage() {
                                 Cobrar Parcialmente
                               </Button>
                             </div>
-                            <Button
-                              size='sm'
-                              color='success'
-                              onPress={() => handleCollect(sale.id)}
-                            >
-                              Cobrar Totalmente
-                            </Button>
+                            <div className="flex flex-wrap gap-1">
+                              <Button
+                                size='sm'
+                                color='primary'
+                                onPress={() => handleAddReturn(sale.id, sale.sale_details.customer_details.id)}
+                              >
+                                Agregar Devolución
+                              </Button>
+                              <Button
+                                size='sm'
+                                color='success'
+                                onPress={() => handleCollect(sale.id)}
+                              >
+                                Cobrar Totalmente
+                              </Button>
+                            </div>
                           </div>
                         </AccordionItem>
                       ))}

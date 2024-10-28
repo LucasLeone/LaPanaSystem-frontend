@@ -48,7 +48,11 @@ const STATE_CHOICES = {
 
 export default function PendingDeliveriesPage() {
   const [filterCustomer, setFilterCustomer] = useState(null);
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  const [filterDate, setFilterDate] = useState(() => {
+    const date = new Date();
+    date.setHours(date.getHours() - 3);
+    return date.toISOString().split('T')[0];
+  });
   const [page, setPage] = useState(1);
 
   const [saleToView, setSaleToView] = useState(null);

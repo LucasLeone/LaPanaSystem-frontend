@@ -17,16 +17,20 @@ import {
   AutocompleteItem,
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft, IconTrash } from "@tabler/icons-react";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import useCustomers from "@/app/hooks/useCustomers";
 import useProducts from "@/app/hooks/useProducts";
 import useSales from "@/app/hooks/useSales";
 import { formatDateForDisplay } from "@/app/utils";
 
 export default function CreateReturnPage() {
+  const searchParams = useSearchParams();
+  const saleId = searchParams.get("sale");
+  const customerId = searchParams.get("customer");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -42,7 +46,9 @@ export default function CreateReturnPage() {
   const { products, loading: productsLoading, error: productsError } = useProducts();
 
   const { sales, loading: salesLoading, error: salesError } = useSales(
-    customer ? { sale_type: 'mayorista', customer: customer, state: 'creada,pendiente_entrega,entregada' } : { sale_type: 'mayorista' }
+    customer
+      ? { sale_type: 'mayorista', customer: customer, state: 'creada,pendiente_entrega,entregada' }
+      : { sale_type: 'mayorista' }
   );
 
   const router = useRouter();
@@ -179,6 +185,28 @@ export default function CreateReturnPage() {
     }
   }, [date, isValidReturn, returnDetails, router, sale]);
 
+  // useEffect para establecer el cliente basado en customerId
+  useEffect(() => {
+    if (!customersLoading && customerId) {
+      const customerExists = customers.find(
+        (c) => c.id.toString() === customerId
+      );
+      if (customerExists) {
+        setCustomer(customerId);
+      }
+    }
+  }, [customersLoading, customers, customerId]);
+
+  // useEffect para establecer la venta basada en saleId
+  useEffect(() => {
+    if (!salesLoading && saleId) {
+      const saleExists = sales.find((s) => s.id.toString() === saleId);
+      if (saleExists) {
+        setSale(saleId);
+      }
+    }
+  }, [salesLoading, sales, saleId]);
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
       <div className="flex items-center mb-4 gap-1">
@@ -212,16 +240,17 @@ export default function CreateReturnPage() {
             onClear={() => {
               setCustomer(null);
               setSale(null);
-              setReturnDetails([{ product: null, quantity: "" }]); // Resetear detalles
+              setReturnDetails([{ product: null, quantity: "" }]);
             }}
             onSelectionChange={(value) => {
               setCustomer(value);
               setSale(null);
-              setReturnDetails([{ product: null, quantity: "" }]); // Resetear detalles
+              setReturnDetails([{ product: null, quantity: "" }]);
             }}
             variant="underlined"
             isClearable
-            value={customer} // Agregado para controlar el valor seleccionado
+            value={customer}
+            selectedKey={customer}
           >
             {customers.map((cust) => (
               <AutocompleteItem key={cust.id.toString()} value={cust.id.toString()}>
@@ -249,9 +278,14 @@ export default function CreateReturnPage() {
             }}
             isDisabled={!customer || (customer && sales.length === 0)}
             value={sale}
+            selectedKey={sale}
           >
             {sales.map((saleItem) => (
-              <AutocompleteItem aria-label={`Venta ${saleItem.id}`} key={saleItem.id} value={saleItem.id.toString()}>
+              <AutocompleteItem
+                aria-label={`Venta ${saleItem.id}`}
+                key={saleItem.id}
+                value={saleItem.id.toString()}
+              >
                 Venta #{saleItem.id} - {saleItem.date ? formatDateForDisplay(saleItem.date) : null}
               </AutocompleteItem>
             ))}
@@ -322,7 +356,10 @@ export default function CreateReturnPage() {
                           value={detail.product}
                         >
                           {saleProducts.map((prod) => (
-                            <AutocompleteItem key={prod.id.toString()} value={prod.id.toString()}>
+                            <AutocompleteItem
+                              key={prod.id.toString()}
+                              value={prod.id.toString()}
+                            >
                               {prod.name}
                             </AutocompleteItem>
                           ))}
