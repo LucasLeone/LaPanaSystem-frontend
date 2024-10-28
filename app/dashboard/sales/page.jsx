@@ -501,8 +501,8 @@ export default function SalesPage() {
       </div>
 
       {/* Crear venta rapida y Filtros */}
-      <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6 gap-2">
-        <div className="flex gap-2 min-w-full md:min-w-[32vw] flex-wrap-reverse">
+      <div className="flex flex-col md:flex-row md:justify-end items-start md:items-center mb-6 gap-2">
+        {/* <div className="flex gap-2 min-w-full md:min-w-[32vw] flex-wrap-reverse">
           <Input
             label="Total"
             placeholder="Ingrese el total de la venta (Ej: 4900.53)"
@@ -524,7 +524,7 @@ export default function SalesPage() {
           <Button color="primary" variant="ghost" className="w-100" onPress={handleCreateSale}>
             Crear venta
           </Button>
-        </div>
+        </div> */}
         <Tooltip content="Aplicar Filtros">
           <Button
             variant="bordered"
