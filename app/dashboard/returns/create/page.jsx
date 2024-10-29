@@ -170,8 +170,11 @@ export default function CreateReturnPage() {
           Authorization: `Token ${token}`,
         },
       });
-
-      router.push("/dashboard/returns");
+      if (saleId && customerId) {
+        router.back();
+      } else {
+        router.push("/dashboard/returns");
+      }
     } catch (error) {
       console.error("Error al crear la devolución:", error);
       if (error.response && error.response.data) {
@@ -183,7 +186,7 @@ export default function CreateReturnPage() {
     } finally {
       setLoading(false);
     }
-  }, [date, isValidReturn, returnDetails, router, sale]);
+  }, [customerId, date, isValidReturn, returnDetails, router, sale, saleId]);
 
   // useEffect para establecer el cliente basado en customerId
   useEffect(() => {
@@ -385,17 +388,17 @@ export default function CreateReturnPage() {
                     <TableCell>
                       {detail.price
                         ? `${detail.price.toLocaleString("es-AR", {
-                            style: "currency",
-                            currency: "ARS",
-                          })}`
+                          style: "currency",
+                          currency: "ARS",
+                        })}`
                         : "-"}
                     </TableCell>
                     <TableCell>
                       {detail.subtotal
                         ? `${detail.subtotal.toLocaleString("es-AR", {
-                            style: "currency",
-                            currency: "ARS",
-                          })}`
+                          style: "currency",
+                          currency: "ARS",
+                        })}`
                         : "-"}
                     </TableCell>
                     <TableCell>

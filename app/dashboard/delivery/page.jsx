@@ -23,13 +23,14 @@ import {
   Autocomplete,
   AutocompleteItem,
   DatePicker,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from "@nextui-org/react";
 import {
-  IconChevronDown,
-  IconCheck,
   IconDownload,
   IconFilter,
-  IconTruck
 } from "@tabler/icons-react";
 import useCustomers from "@/app/hooks/useCustomers";
 import useSales from "@/app/hooks/useSales";
@@ -37,6 +38,8 @@ import api from '@/app/axios';
 import Cookies from "js-cookie";
 import { capitalize } from "@/app/utils";
 import { parseDate } from '@internationalized/date';
+import { IconDots } from '@tabler/icons-react';
+import { useRouter } from 'next/navigation';
 
 const STATE_CHOICES = {
   creada: "Creada",
@@ -47,6 +50,7 @@ const STATE_CHOICES = {
 };
 
 export default function PendingDeliveriesPage() {
+  const router = useRouter();
   const [filterCustomer, setFilterCustomer] = useState(null);
   const [filterDate, setFilterDate] = useState(() => {
     const date = new Date();
@@ -112,6 +116,10 @@ export default function PendingDeliveriesPage() {
     setSaleToView(sale);
     onViewOpen();
   }, [onViewOpen]);
+
+  const handleAddReturn = useCallback((saleId, customerId) => {
+    router.push(`/dashboard/returns/create?sale=${saleId}&customer=${customerId}`);
+  }, [router]);
 
   const handleMarkAsDelivered = useCallback(async (sale) => {
     const token = Cookies.get('access_token');
@@ -180,48 +188,31 @@ export default function PendingDeliveriesPage() {
       state: STATE_CHOICES[sale.state] || capitalize(sale.state),
       actions: (
         <div className="flex gap-1">
-          <Tooltip content="Ver Detalles">
-            <Button
-              variant="light"
-              className="rounded-md"
-              isIconOnly
-              color="primary"
-              onPress={() => handleViewClick(sale)}
-              aria-label={`Ver detalles de la venta ${sale.id}`}
-            >
-              <IconChevronDown className="h-5" />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Marcar como Entregado">
-            <Button
-              variant="light"
-              className="rounded-md"
-              isIconOnly
-              color="success"
-              onPress={() => handleMarkAsDelivered(sale)}
-              aria-label={`Marcar como entregado la venta ${sale.id}`}
-              isDisabled={sale.state !== 'pendiente_entrega'}
-            >
-              <IconTruck className="h-5" />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Marcar como Entregada y Cobrada">
-            <Button
-              variant="light"
-              className="rounded-md"
-              isIconOnly
-              color="secondary"
-              onPress={() => handleMarkAsDeliveredAndCollected(sale)}
-              aria-label={`Marcar como entregada y cobrada la venta ${sale.id}`}
-              isDisabled={sale.state === 'entregada' || sale.state === 'cobrada'}
-            >
-              <IconCheck className="h-5" />
-            </Button>
-          </Tooltip>
+          <Dropdown>
+            <DropdownTrigger>
+              <Button isIconOnly variant='light'>
+                <IconDots className='w-5' />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label='Opciones de Venta'>
+              <DropdownItem key="view" onPress={() => handleViewClick(sale)}>
+                Ver Detalles
+              </DropdownItem>
+              <DropdownItem key="view" onPress={() => handleAddReturn(sale.id, sale.customer_details.id)}>
+                Agregar Devolución
+              </DropdownItem>
+              <DropdownItem key="mark-as-delivered" onPress={() => handleMarkAsDelivered(sale)}>
+                Marcar como Entregado
+              </DropdownItem>
+              <DropdownItem key="mark-as-delivered-and-collected" onPress={() => handleMarkAsDeliveredAndCollected(sale)}>
+                Marcar como Entregado y Cobrado
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
         </div>
       )
     }))
-  ), [currentItems, handleViewClick, handleMarkAsDelivered, handleMarkAsDeliveredAndCollected]);
+  ), [currentItems, handleViewClick, handleAddReturn, handleMarkAsDelivered, handleMarkAsDeliveredAndCollected]);
 
   const applyFilters = () => {
     setFilterCustomer(tempFilterCustomer);
