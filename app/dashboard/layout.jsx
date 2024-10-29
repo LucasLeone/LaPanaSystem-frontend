@@ -43,25 +43,26 @@ export default function DashboardLayout({ children }) {
     Cookies.remove("user");
     Cookies.remove("access_token");
     router.push("/auth/login");
-  }
+  };
 
   const menuItems = [
-    { label: "Inicio", path: "/dashboard", icon: <IconHome /> },
-    { label: "Estadísticas", path: "/dashboard/statistics", icon: <IconChartBar /> },
-    { label: "Productos", path: "/dashboard/products", icon: <IconPackage /> },
-    { label: "Clientes", path: "/dashboard/customers", icon: <IconUsersGroup /> },
-    { label: "Gastos", path: "/dashboard/expenses", icon: <IconCreditCard /> },
-    { label: "Empleados", path: "/dashboard/employees", icon: <IconUsers /> },
-    { label: "Ventas", path: "/dashboard/sales", icon: <IconShoppingCart /> },
-    { label: "Devoluciones", path: "/dashboard/returns", icon: <IconArrowBackUp /> },
-    { label: "Repartir", path: "/dashboard/delivery", icon: <IconTruckDelivery /> },
-    { label: "Cobrar", path: "/dashboard/collect", icon: <IconCash /> },
-    { 
+    { label: "Inicio", path: "/dashboard", icon: <IconHome />, rolesAllowed: ["ADMIN", "DELIVERY", "SELLER"] },
+    { label: "Estadísticas", path: "/dashboard/statistics", icon: <IconChartBar />, rolesAllowed: ["ADMIN"] },
+    { label: "Productos", path: "/dashboard/products", icon: <IconPackage />, rolesAllowed: ["ADMIN", "SELLER"] },
+    { label: "Clientes", path: "/dashboard/customers", icon: <IconUsersGroup />, rolesAllowed: ["ADMIN"] },
+    { label: "Gastos", path: "/dashboard/expenses", icon: <IconCreditCard />, rolesAllowed: ["ADMIN", "SELLER"] },
+    { label: "Empleados", path: "/dashboard/employees", icon: <IconUsers />, rolesAllowed: ["ADMIN"] },
+    { label: "Ventas", path: "/dashboard/sales", icon: <IconShoppingCart />, rolesAllowed: ["ADMIN", "SELLER"] },
+    { label: "Devoluciones", path: "/dashboard/returns", icon: <IconArrowBackUp />, rolesAllowed: ["ADMIN", "DELIVERY"] },
+    { label: "Repartir", path: "/dashboard/delivery", icon: <IconTruckDelivery />, rolesAllowed: ["ADMIN", "DELIVERY"] },
+    { label: "Cobrar", path: "/dashboard/collect", icon: <IconCash />, rolesAllowed: ["ADMIN", "DELIVERY"] },
+    {
       label: "Cerrar sesión",
       onClick: handleLogout,
       icon: <IconArrowLeft />,
-      className: "text-red-500 hover:text-red-700"
-    }
+      className: "text-red-500 hover:text-red-700",
+      rolesAllowed: ["ADMIN", "DELIVERY", "SELLER"],
+    },
   ];
 
   return (
@@ -71,14 +72,18 @@ export default function DashboardLayout({ children }) {
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
             {sidebarOpen ? <Logo /> : <LogoIcon />}
             <div className="mt-8 flex flex-col gap-2">
-              {menuItems.map((item) => (
-                <SidebarLink
-                  key={item.label}
-                  link={item}
-                  onClick={item.onClick}
-                  className={item.className || ""}
-                />
-              ))}
+              {menuItems.map((item) => {
+                const isDisabled = !item.rolesAllowed.includes(user.user_type);
+                return (
+                  <SidebarLink
+                    key={item.label}
+                    link={item}
+                    onClick={!isDisabled ? item.onClick : undefined}
+                    isDisabled={isDisabled}
+                    className={`${item.className || ""}`}
+                  />
+                );
+              })}
             </div>
           </div>
           <div>

@@ -126,6 +126,7 @@ export const SidebarLink = ({
   link,
   className,
   onClick,
+  isDisabled = false,
   ...props
 }) => {
   const { open, animate } = useSidebar();
@@ -139,6 +140,7 @@ export const SidebarLink = ({
     <Link
       href={link.path}
       onClick={onClick}
+      isDisabled={isDisabled}
       className={cn(
         "flex items-center justify-start gap-2 group/sidebar py-2 cursor-pointer text-neutral-200 hover:text-white transition-colors duration-200",
         className
