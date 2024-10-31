@@ -198,7 +198,7 @@ export default function PendingDeliveriesPage() {
               <DropdownItem key="view" onPress={() => handleViewClick(sale)}>
                 Ver Detalles
               </DropdownItem>
-              <DropdownItem key="view" onPress={() => handleAddReturn(sale.id, sale.customer_details.id)}>
+              <DropdownItem key="add-return" onPress={() => handleAddReturn(sale.id, sale.customer_details.id)}>
                 Agregar Devolución
               </DropdownItem>
               <DropdownItem key="mark-as-delivered" onPress={() => handleMarkAsDelivered(sale)}>

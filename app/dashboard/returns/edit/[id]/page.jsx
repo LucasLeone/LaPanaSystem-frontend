@@ -68,7 +68,6 @@ export default function EditReturnPage() {
     }
   }, [return_, returnLoading]);
 
-  // Añade un límite explícito al llamar a useSales
   const { sales, loading: salesLoading, error: salesError } = useSales({
     sale_type: 'mayorista',
     customer: customer,
@@ -84,13 +83,44 @@ export default function EditReturnPage() {
     return `${year}-${month}-${day}`;
   }
 
-  const isValidQuantity = (quantity) => {
-    return /^\d+(\.\d{1,3})?$/.test(quantity) && parseFloat(quantity) > 0;
+  const isValidQuantity = (quantity, maxQuantity) => {
+    const validFormat = /^\d+(\.\d{1,3})?$/.test(quantity);
+    const parsedQuantity = parseFloat(quantity);
+    return (
+      validFormat &&
+      parsedQuantity > 0 &&
+      (!maxQuantity || parsedQuantity <= maxQuantity)
+    );
   };
+
+  const selectedSale = useMemo(() => {
+    return sales.find((s) => s.id === parseInt(sale, 10));
+  }, [sales, sale]);
+
+  const productQuantityMap = useMemo(() => {
+    if (!selectedSale) return {};
+    const map = {};
+    selectedSale.sale_details.forEach((detail) => {
+      map[detail.product_details.id] = parseFloat(detail.quantity);
+    });
+    return map;
+  }, [selectedSale]);
+
+  const saleProductIds = useMemo(() => {
+    if (!selectedSale) return [];
+    return selectedSale.sale_details.map((detail) =>
+      detail.product_details.id.toString()
+    );
+  }, [selectedSale]);
 
   const isValidReturn = () => {
     if (!customer) {
       setError("Por favor, selecciona un cliente.");
+      return false;
+    }
+
+    if (!sale) {
+      setError("Por favor, selecciona una venta.");
       return false;
     }
 
@@ -100,9 +130,26 @@ export default function EditReturnPage() {
         setError(`Por favor, selecciona un producto en el detalle ${i + 1}.`);
         return false;
       }
-      if (!detail.quantity || !isValidQuantity(detail.quantity)) {
+
+      const maxQuantity = productQuantityMap[parseInt(detail.product)];
+
+      if (
+        !detail.quantity ||
+        !isValidQuantity(detail.quantity, maxQuantity)
+      ) {
         setError(
-          `Por favor, ingresa una cantidad válida en el detalle ${i + 1}.`
+          `Por favor, ingresa una cantidad válida en el detalle ${
+            i + 1
+          }. La cantidad no puede exceder ${maxQuantity}.`
+        );
+        return false;
+      }
+
+      if (!saleProductIds.includes(detail.product)) {
+        setError(
+          `El producto seleccionado en el detalle ${
+            i + 1
+          } no está en la venta seleccionada.`
         );
         return false;
       }
@@ -255,7 +302,7 @@ export default function EditReturnPage() {
             <AutocompleteItem
               aria-label={`Venta ${saleItem.id}`}
               key={saleItem.id.toString()}
-              value={saleItem.id.toString()} // Asegurarse de que el valor sea una cadena
+              value={saleItem.id.toString()}
             >
               Venta #{saleItem.id} - {saleItem.date ? formatDateForDisplay(saleItem.date) : null}
             </AutocompleteItem>
@@ -343,22 +390,27 @@ export default function EditReturnPage() {
                         step="0.001"
                         isRequired
                         className="max-w-[100px]"
+                        max={
+                          detail.product
+                            ? productQuantityMap[parseInt(detail.product)] || undefined
+                            : undefined
+                        }
                       />
                     </TableCell>
                     <TableCell>
                       {detail.price
                         ? `${detail.price.toLocaleString("es-AR", {
-                          style: "currency",
-                          currency: "ARS",
-                        })}`
+                            style: "currency",
+                            currency: "ARS",
+                          })}`
                         : "-"}
                     </TableCell>
                     <TableCell>
                       {detail.subtotal
                         ? `${detail.subtotal.toLocaleString("es-AR", {
-                          style: "currency",
-                          currency: "ARS",
-                        })}`
+                            style: "currency",
+                            currency: "ARS",
+                          })}`
                         : "-"}
                     </TableCell>
                     <TableCell>

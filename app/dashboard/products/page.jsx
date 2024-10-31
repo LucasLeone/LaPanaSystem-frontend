@@ -66,6 +66,8 @@ export default function ProductsPage() {
   // Estados para eliminación de productos
   const [productToDelete, setProductToDelete] = useState(null);
 
+  const user = JSON.parse(Cookies.get("user"));
+
   // Control de modales
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
@@ -255,6 +257,7 @@ export default function ProductsPage() {
                 color="danger"
                 onPress={() => handleDeleteClick(product)}
                 aria-label={`Eliminar producto ${product.name}`}
+                isDisabled={user.user_type !== "ADMIN"}
               >
                 <IconTrash className="h-5" />
               </Button>
@@ -262,7 +265,7 @@ export default function ProductsPage() {
           </div>
         ),
       })),
-    [products, handleDeleteClick, router]
+    [products, user.user_type, router, handleDeleteClick]
   );
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);

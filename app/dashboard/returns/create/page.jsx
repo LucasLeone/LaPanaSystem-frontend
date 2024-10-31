@@ -61,8 +61,14 @@ export default function CreateReturnPage() {
     return `${year}-${month}-${day}`;
   }
 
-  const isValidQuantity = (quantity) => {
-    return /^\d+(\.\d{1,2})?$/.test(quantity) && parseFloat(quantity) > 0;
+  const isValidQuantity = (quantity, maxQuantity) => {
+    const validFormat = /^\d+(\.\d{1,3})?$/.test(quantity);
+    const parsedQuantity = parseFloat(quantity);
+    return (
+      validFormat &&
+      parsedQuantity > 0 &&
+      (!maxQuantity || parsedQuantity <= maxQuantity)
+    );
   };
 
   const selectedSale = useMemo(() => {
@@ -78,6 +84,7 @@ export default function CreateReturnPage() {
     return products.filter((p) => saleProductIds.includes(p.id.toString()));
   }, [products, saleProductIds]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const isValidReturn = () => {
     if (!customer) {
       setError("Por favor, selecciona un cliente.");
@@ -95,12 +102,25 @@ export default function CreateReturnPage() {
         setError(`Por favor, selecciona un producto en el detalle ${i + 1}.`);
         return false;
       }
-      if (!detail.quantity || !isValidQuantity(detail.quantity)) {
-        setError(`Por favor, ingresa una cantidad válida en el detalle ${i + 1}.`);
+
+      const maxQuantity = productQuantityMap[parseInt(detail.product)];
+
+      if (
+        !detail.quantity ||
+        !isValidQuantity(detail.quantity, maxQuantity)
+      ) {
+        setError(
+          `Por favor, ingresa una cantidad válida en el detalle ${i + 1
+          }. La cantidad no puede exceder ${maxQuantity}.`
+        );
         return false;
       }
+
       if (!saleProductIds.includes(detail.product)) {
-        setError(`El producto seleccionado en el detalle ${i + 1} no está en la venta seleccionada.`);
+        setError(
+          `El producto seleccionado en el detalle ${i + 1
+          } no está en la venta seleccionada.`
+        );
         return false;
       }
     }
@@ -209,6 +229,15 @@ export default function CreateReturnPage() {
       }
     }
   }, [salesLoading, sales, saleId]);
+
+  const productQuantityMap = useMemo(() => {
+    if (!selectedSale) return {};
+    const map = {};
+    selectedSale.sale_details.forEach((detail) => {
+      map[detail.product_details.id] = parseFloat(detail.quantity);
+    });
+    return map;
+  }, [selectedSale]);
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
@@ -383,6 +412,11 @@ export default function CreateReturnPage() {
                         step="0.001"
                         isRequired
                         className="max-w-[100px]"
+                        max={
+                          detail.product
+                            ? productQuantityMap[parseInt(detail.product)] || undefined
+                            : undefined
+                        }
                       />
                     </TableCell>
                     <TableCell>

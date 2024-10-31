@@ -66,6 +66,8 @@ export default function ExpensesPage() {
   // Estados para eliminación de gastos
   const [expenseToDelete, setExpenseToDelete] = useState(null);
 
+  const user = JSON.parse(Cookies.get("user"));
+
   // Control de modales
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
@@ -262,6 +264,7 @@ export default function ExpensesPage() {
                 color="danger"
                 onPress={() => handleDeleteClick(expense)}
                 aria-label={`Eliminar gasto ${expense.description}`}
+                isDisabled={user.user_type !== "ADMIN"}
               >
                 <IconTrash className="h-5" />
               </Button>
@@ -269,7 +272,7 @@ export default function ExpensesPage() {
           </div>
         ),
       })),
-    [expenses, handleDeleteClick, router]
+    [expenses, formatAmount, formatDate, handleDeleteClick, router, user.user_type]
   );
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
