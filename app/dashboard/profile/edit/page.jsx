@@ -25,7 +25,7 @@ export default function EditProfilePage() {
       const user = JSON.parse(Cookies.get("user"));
 
       try {
-        const response = await api.get(`/users/${user.username}/`, {
+        const response = await api.get(`/users/profile/`, {
           headers: {
             Authorization: `Token ${token}`,
           },
@@ -53,8 +53,8 @@ export default function EditProfilePage() {
       await api.put(
         `/users/${user.username}/`,
         {
-          username: userData.username, // Incluir username
-          user_type: userData.user_type, // Incluir user_type
+          username: userData.username,
+          user_type: userData.user_type,
           first_name: userData.first_name,
           last_name: userData.last_name,
           email: userData.email,
