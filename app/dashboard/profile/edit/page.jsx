@@ -48,10 +48,8 @@ export default function EditProfilePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const token = Cookies.get("access_token");
-    const user = JSON.parse(Cookies.get("user"));
     try {
-      await api.put(
-        `/users/${user.username}/`,
+      await api.patch("/users/update-profile/",
         {
           username: userData.username,
           user_type: userData.user_type,
