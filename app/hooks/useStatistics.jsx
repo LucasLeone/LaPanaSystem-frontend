@@ -22,13 +22,13 @@ const useStatistics = (filters = {}) => {
     const queryString = `?${queryParams.toString()}`;
 
     try {
-      const response = await api.get(`/statistics/${queryString}`, {
+      const response = await api.get(`/sales/statistics/${queryString}`, {
         headers: {
           Authorization: `Token ${token}`,
         },
       });
 
-      setStatistics(response.data);
+      setStatistics(response.data.statistics);
     } catch (err) {
       if (err.response && err.response.data.detail === "Usted no tiene permiso para realizar esta acción.") {
         setError("No tiene permisos para esta acción.");

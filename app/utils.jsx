@@ -23,35 +23,41 @@ export const formatDateToISO = (dateObj) => {
 
   const pad = (num, size = 2) => num.toString().padStart(size, '0');
 
-  const isoDate = `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:${pad(second)}.${pad(millisecond,3)}${formattedOffset}`;
+  const isoDate = `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:${pad(second)}.${pad(millisecond, 3)}${formattedOffset}`;
 
   return isoDate;
 };
 
-export const formatDateForDisplay = (dateInput) => {
+export const formatDateForDisplay = (dateInput, showTime = true) => {
   if (!dateInput) return null;
 
-  const dateObj = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  let dateObj;
 
-  if (isNaN(dateObj)) return null;
-
-  const year = dateObj.getFullYear();
-  const month = dateObj.getMonth() + 1;
-  const day = dateObj.getDate();
-  const hour = dateObj.getHours();
-  const minute = dateObj.getMinutes();
-
-  const pad = (num, size = 2) => num.toString().padStart(size, '0');
-
-  const datePart = `${pad(day)}/${pad(month)}/${year}`;
-
-  if (hour === 0 && minute === 0) {
-    return datePart;
+  // Asegúrate de que el objeto Date esté en UTC
+  if (typeof dateInput === "string") {
+    const parts = dateInput.split('-');
+    dateObj = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])); // Meses son 0-based en JavaScript
+  } else {
+    dateObj = dateInput;
   }
 
-  const timePart = `${pad(hour)}:${pad(minute)}`;
+  if (isNaN(dateObj.getTime())) return null;
 
-  const formattedDate = `${datePart} ${timePart}`;
+  const year = dateObj.getUTCFullYear();
+  const month = dateObj.getUTCMonth() + 1; // Meses son 0-based
+  const day = dateObj.getUTCDate();
+
+  const pad = (num, size = 2) => num.toString().padStart(size, '0');
+  const datePart = `${pad(day)}/${pad(month)}/${year}`;
+
+  let formattedDate = datePart;
+
+  if (showTime) {
+    const hour = dateObj.getUTCHours();
+    const minute = dateObj.getUTCMinutes();
+    const timePart = `${pad(hour)}:${pad(minute)}`;
+    formattedDate = `${datePart} ${timePart}`;
+  }
 
   return formattedDate;
 };
