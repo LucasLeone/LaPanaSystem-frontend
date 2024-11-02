@@ -207,7 +207,7 @@ export default function StatisticsPage() {
             <p className="font-semibold">Ventas</p>
           </CardHeader>
           <CardBody>
-            <p className="text-lg font-semibold">${statistics[selectedTab]?.total_sales}</p>
+            <p className="text-lg font-semibold">{parseFloat(statistics[selectedTab]?.total_sales).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
             <p className="text-green-500 text-sm">
               {statistics[selectedTab]?.total_sales_count} ventas
             </p>
@@ -221,7 +221,7 @@ export default function StatisticsPage() {
             <p className="font-semibold">Devoluciones</p>
           </CardHeader>
           <CardBody>
-            <p className="text-lg font-semibold">${statistics[selectedTab]?.total_returns_amount}</p>
+            <p className="text-lg font-semibold">{parseFloat(statistics[selectedTab]?.total_returns_amount).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
           </CardBody>
         </Card>
 
@@ -232,7 +232,7 @@ export default function StatisticsPage() {
             <p className="font-semibold">Total Cobrado</p>
           </CardHeader>
           <CardBody>
-            <p className="text-lg font-semibold">${statistics[selectedTab]?.total_collected_amount}</p>
+            <p className="text-lg font-semibold">{parseFloat(statistics[selectedTab]?.total_collected_amount).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
           </CardBody>
         </Card>
 
@@ -243,18 +243,18 @@ export default function StatisticsPage() {
             <p className="font-semibold">Gastos</p>
           </CardHeader>
           <CardBody>
-            <p className="text-lg font-semibold">${statistics[selectedTab]?.total_expenses}</p>
+            <p className="text-lg font-semibold">{parseFloat(statistics[selectedTab]?.total_expenses).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
           </CardBody>
         </Card>
 
         {/* Ganancias */}
         <Card isHoverable variant="bordered" className="shadow-lg">
           <CardHeader className="flex items-center">
-          <IconTrendingUp className="w-6 h-6 text-green-500 mr-2" />
+            <IconTrendingUp className="w-6 h-6 text-green-500 mr-2" />
             <p className="font-semibold">Ganancias</p>
           </CardHeader>
           <CardBody>
-            <p className="text-lg font-semibold">${statistics[selectedTab]?.total_profit}</p>
+            <p className="text-lg font-semibold">{parseFloat(statistics[selectedTab]?.total_profit).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
           </CardBody>
         </Card>
       </div>
@@ -304,11 +304,11 @@ export default function StatisticsPage() {
                     {statistics[selectedTab].daily_breakdown.map((day) => (
                       <tr key={day.date}>
                         <td className="px-6 py-4 whitespace-nowrap">{formatDateForDisplay(day.date, false)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">${day.total_sales}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">${day.total_returns}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">${day.net_collected}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">${day.daily_expenses}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">${day.daily_profit}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{parseFloat(day.total_sales).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{parseFloat(day.total_returns).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{parseFloat(day.net_collected).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{parseFloat(day.daily_expenses).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{parseFloat(day.daily_profit).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</td>
                       </tr>
                     ))}
                   </tbody>
