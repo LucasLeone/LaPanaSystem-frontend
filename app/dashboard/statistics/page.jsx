@@ -14,16 +14,16 @@ import {
 import {
   IconDownload,
   IconTrendingUp,
-  IconArrowDownLeft,
   IconCash,
   IconArrowUpRight,
-  IconTrendingDown,
 } from "@tabler/icons-react";
 import { useState } from "react";
-import ReactApexChart from "react-apexcharts";
 import { formatDateForDisplay } from "@/app/utils";
-import { parseDate, getLocalTimeZone } from "@internationalized/date";
+import { getLocalTimeZone } from "@internationalized/date";
 import useStatistics from "@/app/hooks/useStatistics";
+import dynamic from 'next/dynamic';
+import { IconArrowBack } from "@tabler/icons-react";
+const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
 export default function StatisticsPage() {
   const [selectedTab, setSelectedTab] = useState("today");
@@ -32,14 +32,14 @@ export default function StatisticsPage() {
     end: null,
   });
 
-  // Formatea el rango de fechas para enviarlo al hook de estadísticas
   const formattedRange = {
     start_date: customRange.start ? customRange.start.toDate(getLocalTimeZone()).toISOString().split('T')[0] : null,
     end_date: customRange.end ? customRange.end.toDate(getLocalTimeZone()).toISOString().split('T')[0] : null,
   };
 
-  // Pasa los parámetros de filtro al hook
-  const { statistics, loading } = useStatistics(selectedTab === "custom" ? formattedRange : {});
+  const { statistics, loading } = useStatistics(
+    selectedTab === "custom" && formattedRange.start_date && formattedRange.end_date ? formattedRange : {}
+  );
 
   if (loading) {
     return (
@@ -193,6 +193,7 @@ export default function StatisticsPage() {
             onChange={setCustomRange}
             placeholder="Selecciona un rango de fechas"
             label="Rango de Fechas"
+            variant="underlined"
           />
         </div>
       )}
@@ -202,7 +203,7 @@ export default function StatisticsPage() {
         {/* Ventas */}
         <Card isHoverable variant="bordered" className="shadow-lg">
           <CardHeader className="flex items-center">
-            <IconTrendingUp className="w-6 h-6 text-green-500 mr-2" />
+            <IconCash className="w-6 h-6 text-green-500 mr-2" />
             <p className="font-semibold">Ventas</p>
           </CardHeader>
           <CardBody>
@@ -216,7 +217,7 @@ export default function StatisticsPage() {
         {/* Devoluciones */}
         <Card isHoverable variant="bordered" className="shadow-lg">
           <CardHeader className="flex items-center">
-            <IconArrowDownLeft className="w-6 h-6 text-red-500 mr-2" />
+            <IconArrowBack className="w-6 h-6 text-red-500 mr-2" />
             <p className="font-semibold">Devoluciones</p>
           </CardHeader>
           <CardBody>
@@ -249,7 +250,7 @@ export default function StatisticsPage() {
         {/* Ganancias */}
         <Card isHoverable variant="bordered" className="shadow-lg">
           <CardHeader className="flex items-center">
-            <IconTrendingDown className="w-6 h-6 text-purple-500 mr-2" />
+          <IconTrendingUp className="w-6 h-6 text-green-500 mr-2" />
             <p className="font-semibold">Ganancias</p>
           </CardHeader>
           <CardBody>
