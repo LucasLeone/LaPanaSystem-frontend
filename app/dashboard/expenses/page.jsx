@@ -66,7 +66,7 @@ export default function ExpensesPage() {
   // Estados para eliminación de gastos
   const [expenseToDelete, setExpenseToDelete] = useState(null);
 
-  const user = JSON.parse(Cookies.get("user"));
+  const user = Cookies.get("user") ? JSON.parse(Cookies.get("user")) : {};
 
   // Control de modales
   const { isOpen, onOpen, onClose } = useDisclosure();
