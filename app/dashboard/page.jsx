@@ -141,7 +141,7 @@ export default function DashboardHome() {
           const isDisabled = !module.rolesAllowed.includes(user.user_type.toUpperCase());
 
           return (
-            <Link href={module.path} passHref key={module.label} isDisabled={isDisabled}>
+            <Link href={module.path} key={module.label} isDisabled={isDisabled}>
               <Card
                 shadow="none"
                 className="border-1 rounded-md hover:shadow-lg transition-shadow w-full md:h-32 cursor-pointer"
