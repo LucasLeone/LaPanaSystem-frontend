@@ -35,6 +35,7 @@ export function middleware(request) {
 
     const roleAllowedPaths = {
       SELLER: [
+        '/',
         '/dashboard/products',
         '/dashboard/expenses',
         '/dashboard/sales',
