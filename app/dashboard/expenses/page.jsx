@@ -576,6 +576,7 @@ export default function ExpensesPage() {
                   color="primary"
                   onPress={handleDeleteExpense}
                   disabled={false}
+                  aria-label="Confirmar eliminar gasto"
                 >
                   Eliminar
                 </Button>

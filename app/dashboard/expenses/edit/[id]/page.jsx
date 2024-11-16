@@ -5,8 +5,6 @@ import {
   Input,
   Spinner,
   Code,
-  Select,
-  SelectItem,
   Link,
   Tooltip,
   Textarea,
