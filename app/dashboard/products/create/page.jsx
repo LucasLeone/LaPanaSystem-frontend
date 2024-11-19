@@ -224,7 +224,7 @@ export default function CreateProductPage() {
           </div>
           <div className="flex-1">
             <Select
-              aria-label="Unidad de Peso"
+              aria-label="unit_weight"
               label="Unidad de Peso"
               placeholder="Seleccione una unidad de peso (Opcional)"
               selectedKeys={weightUnit ? [weightUnit] : []}
@@ -234,6 +234,7 @@ export default function CreateProductPage() {
               }}
               variant="underlined"
               className="w-full"
+              data-testid="unit-weight-select"
             >
               <SelectItem key="g" value="g">Gramos (g)</SelectItem>
               <SelectItem key="kg" value="kg">Kilogramos (kg)</SelectItem>

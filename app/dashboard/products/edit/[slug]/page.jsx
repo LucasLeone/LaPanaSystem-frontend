@@ -264,6 +264,7 @@ export default function EditProductPage() {
               }}
               variant="underlined"
               className="w-full"
+              data-testid="edit-unit-weight-select" // Añadido
             >
               <SelectItem key="g" value="g">Gramos (g)</SelectItem>
               <SelectItem key="kg" value="kg">Kilogramos (kg)</SelectItem>
