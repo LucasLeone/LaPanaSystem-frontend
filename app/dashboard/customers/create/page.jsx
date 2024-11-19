@@ -24,7 +24,7 @@ export default function CreateCustomerPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [customerType, setCustomerType] = useState("");
+  const [customerType, setCustomerType] = useState("mayorista");
 
   const router = useRouter();
 
@@ -150,6 +150,7 @@ export default function CreateCustomerPage() {
             onSelectionChange={(value) => setCustomerType(value ? Array.from(value)[0] : '')}
             variant="underlined"
             isRequired
+            defaultSelectedKeys={['mayorista']}
           >
             <SelectItem key="minorista" value="minorista">Minorista</SelectItem>
             <SelectItem key="mayorista" value="mayorista">Mayorista</SelectItem>

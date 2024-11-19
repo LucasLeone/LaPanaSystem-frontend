@@ -142,7 +142,13 @@ export default function CustomersPage() {
           Authorization: `Token ${token}`,
         },
       });
-      fetchCustomers(); // Actualiza la lista de clientes después de eliminar
+      fetchCustomers({
+        search: debouncedSearchQuery,
+        customer_type: filterCustomerType,
+        ordering: orderingParam,
+        page: offset,
+        limit: 10,
+      });
       onClose();
     } catch (err) {
       console.error("Error al eliminar cliente:", err);
@@ -150,7 +156,7 @@ export default function CustomersPage() {
     } finally {
       setDeleting(false);
     }
-  }, [customerToDelete, fetchCustomers, onClose]);
+  }, [customerToDelete, debouncedSearchQuery, fetchCustomers, filterCustomerType, offset, onClose, orderingParam]);
 
   // Función para manejar la apertura del modal de eliminación
   const handleDeleteClick = useCallback(
@@ -298,13 +304,13 @@ export default function CustomersPage() {
   const handleDetailProductChange = (keys, index) => {
     const productId = keys;
     console.log("productId", productId);
-  
+
     setEditingStandingOrder((prevOrder) => {
       const newDetails = [...prevOrder.details];
       newDetails[index] = { ...newDetails[index], product: productId };
       return { ...prevOrder, details: newDetails };
     });
-  };  
+  };
 
   const handleDetailQuantityChange = (e, index) => {
     const value = e.target.value;
@@ -545,18 +551,16 @@ export default function CustomersPage() {
           <DropdownTrigger>
             <Button
               variant="bordered"
-              className={`rounded-md border-1.5 ${
-                filterCustomerType ? "bg-gray-200" : ""
-              }`}
+              className={`rounded-md border-1.5 ${filterCustomerType ? "bg-gray-200" : ""
+                }`}
               aria-label="Filtros"
             >
               <IconFilter className="h-4 mr-1" />
               {filterCustomerType
-                ? `${
-                    filterItems.find(
-                      (item) => item.key === filterCustomerType
-                    )?.label || "Filtros"
-                  }`
+                ? `${filterItems.find(
+                  (item) => item.key === filterCustomerType
+                )?.label || "Filtros"
+                }`
                 : "Tipo de Cliente"}
             </Button>
           </DropdownTrigger>
