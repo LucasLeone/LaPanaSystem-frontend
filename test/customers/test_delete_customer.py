@@ -63,8 +63,6 @@ try:
     wait.until(EC.staleness_of(first_delete_button))
     print("Cliente eliminado exitosamente.")
 
-    time.sleep(5)
-
 
 except Exception as e:
     print("Ocurrió un error:", e)
