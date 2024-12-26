@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   Button,
-  Tooltip,
   Spinner,
   Table,
   TableHeader,
@@ -24,11 +23,8 @@ import {
   Accordion,
   AccordionItem,
   Input,
-  ScrollShadow,
 } from "@nextui-org/react";
 import {
-  IconDownload,
-  IconFilter,
   IconDots,
 } from "@tabler/icons-react";
 import useSalesForCollect from '@/app/hooks/useSalesForCollect';
@@ -435,127 +431,125 @@ export default function CollectPage() {
               <ModalHeader className="flex flex-col gap-1">
                 Detalles de Cobranza para {selectedCustomer.name}
               </ModalHeader>
-              <ScrollShadow offset={25} size={50}>
-                <ModalBody>
-                  {selectedCustomer.sales_to_collect.length > 0 ? (
-                    <Accordion>
-                      {selectedCustomer.sales_to_collect.map((sale) => (
-                        <AccordionItem
-                          key={sale.id}
-                          aria-label={`Detalles de la Venta #${sale.id}`}
-                          title={`Venta #${sale.id} - ${new Date(sale.date).toLocaleDateString("es-AR")}`}
-                        >
-                          <div className="mb-4">
-                            <p><strong>Fecha:</strong> {new Date(sale.date).toLocaleString("es-AR")}</p>
-                            <p><strong>Total:</strong> {parseFloat(sale.total).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
-                            <p><strong>Total Devoluciones:</strong> {parseFloat(sale.total_returns).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
-                            <p><strong>Total a Cobrar:</strong> {parseFloat(sale.total_to_collect).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
-                            <p><strong>Total Cobrado:</strong> {parseFloat(sale.total_collected).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
-                            <p><strong>Tipo de Venta:</strong> {getChoiceName(SALE_TYPE_CHOICES, sale.sale_details.sale_type)}</p>
-                            <p><strong>Método de Pago:</strong> {getChoiceName(PAYMENT_METHOD_CHOICES, sale.sale_details.payment_method)}</p>
-                            <p><strong>Estado:</strong> {getChoiceName(STATE_CHOICES, sale.sale_details.state)}</p>
-                          </div>
+              <ModalBody>
+                {selectedCustomer.sales_to_collect.length > 0 ? (
+                  <Accordion>
+                    {selectedCustomer.sales_to_collect.map((sale) => (
+                      <AccordionItem
+                        key={sale.id}
+                        aria-label={`Detalles de la Venta #${sale.id}`}
+                        title={`Venta #${sale.id} - ${new Date(sale.date).toLocaleDateString("es-AR")}`}
+                      >
+                        <div className="mb-4">
+                          <p><strong>Fecha:</strong> {new Date(sale.date).toLocaleString("es-AR")}</p>
+                          <p><strong>Total:</strong> {parseFloat(sale.total).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
+                          <p><strong>Total Devoluciones:</strong> {parseFloat(sale.total_returns).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
+                          <p><strong>Total a Cobrar:</strong> {parseFloat(sale.total_to_collect).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
+                          <p><strong>Total Cobrado:</strong> {parseFloat(sale.total_collected).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
+                          <p><strong>Tipo de Venta:</strong> {getChoiceName(SALE_TYPE_CHOICES, sale.sale_details.sale_type)}</p>
+                          <p><strong>Método de Pago:</strong> {getChoiceName(PAYMENT_METHOD_CHOICES, sale.sale_details.payment_method)}</p>
+                          <p><strong>Estado:</strong> {getChoiceName(STATE_CHOICES, sale.sale_details.state)}</p>
+                        </div>
 
-                          <div className="overflow-x-auto border rounded-md">
-                            <Table
-                              aria-label={`Detalles de la Venta #${sale.id}`}
-                              className="border-none min-w-full"
-                              shadow="none"
-                              isCompact
-                              removeWrapper
+                        <div className="overflow-x-auto border rounded-md">
+                          <Table
+                            aria-label={`Detalles de la Venta #${sale.id}`}
+                            className="border-none min-w-full"
+                            shadow="none"
+                            isCompact
+                            removeWrapper
+                          >
+                            <TableHeader>
+                              <TableColumn className="bg-white text-bold border-b-1">
+                                Producto
+                              </TableColumn>
+                              <TableColumn className="bg-white text-bold border-b-1">
+                                Cantidad
+                              </TableColumn>
+                              <TableColumn className="bg-white text-bold border-b-1">
+                                Precio
+                              </TableColumn>
+                              <TableColumn className="bg-white text-bold border-b-1">
+                                Subtotal
+                              </TableColumn>
+                            </TableHeader>
+                            <TableBody>
+                              {sale.sale_details.sale_details.map((item) => (
+                                <TableRow key={item.id}>
+                                  <TableCell>
+                                    {item.product_details.name}
+                                  </TableCell>
+                                  <TableCell>{item.quantity}</TableCell>
+                                  <TableCell>
+                                    {parseFloat(item.price).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}
+                                  </TableCell>
+                                  <TableCell>
+                                    {parseFloat(item.subtotal).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        <div className="justify-between w-full flex gap-1 mt-4">
+                          <div className="flex flex-wrap gap-1">
+                            <Input
+                              size='sm'
+                              type='number'
+                              placeholder='Monto'
+                              min={1}
+                              step={0.01}
+                              className="max-w-[100px]"
+                              aria-label={`Monto a Cobrar de la Venta #${sale.id}`}
+                              startContent={<span className="text-default-400 text-small">$</span>}
+                              value={partialAmounts[sale.id] || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setPartialAmounts(prev => ({
+                                  ...prev,
+                                  [sale.id]: value,
+                                }));
+                                setPartialErrors(prev => ({
+                                  ...prev,
+                                  [sale.id]: '',
+                                }));
+                              }}
+                              status={partialErrors[sale.id] ? 'error' : 'default'}
+                              isInvalid={!!partialErrors[sale.id]}
+                              helperText={partialErrors[sale.id]}
+                            />
+                            <Button
+                              size='sm'
+                              color='secondary'
+                              onPress={() => handlePartialCollect(sale.id, sale.total)}
                             >
-                              <TableHeader>
-                                <TableColumn className="bg-white text-bold border-b-1">
-                                  Producto
-                                </TableColumn>
-                                <TableColumn className="bg-white text-bold border-b-1">
-                                  Cantidad
-                                </TableColumn>
-                                <TableColumn className="bg-white text-bold border-b-1">
-                                  Precio
-                                </TableColumn>
-                                <TableColumn className="bg-white text-bold border-b-1">
-                                  Subtotal
-                                </TableColumn>
-                              </TableHeader>
-                              <TableBody>
-                                {sale.sale_details.sale_details.map((item) => (
-                                  <TableRow key={item.id}>
-                                    <TableCell>
-                                      {item.product_details.name}
-                                    </TableCell>
-                                    <TableCell>{item.quantity}</TableCell>
-                                    <TableCell>
-                                      {parseFloat(item.price).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}
-                                    </TableCell>
-                                    <TableCell>
-                                      {parseFloat(item.subtotal).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
+                              Cobrar Parcialmente
+                            </Button>
                           </div>
-                          <div className="justify-between w-full flex gap-1 mt-4">
-                            <div className="flex flex-wrap gap-1">
-                              <Input
-                                size='sm'
-                                type='number'
-                                placeholder='Monto'
-                                min={1}
-                                step={0.01}
-                                className="max-w-[100px]"
-                                aria-label={`Monto a Cobrar de la Venta #${sale.id}`}
-                                startContent={<span className="text-default-400 text-small">$</span>}
-                                value={partialAmounts[sale.id] || ''}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  setPartialAmounts(prev => ({
-                                    ...prev,
-                                    [sale.id]: value,
-                                  }));
-                                  setPartialErrors(prev => ({
-                                    ...prev,
-                                    [sale.id]: '',
-                                  }));
-                                }}
-                                status={partialErrors[sale.id] ? 'error' : 'default'}
-                                isInvalid={!!partialErrors[sale.id]}
-                                helperText={partialErrors[sale.id]}
-                              />
-                              <Button
-                                size='sm'
-                                color='secondary'
-                                onPress={() => handlePartialCollect(sale.id, sale.total)}
-                              >
-                                Cobrar Parcialmente
-                              </Button>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              <Button
-                                size='sm'
-                                color='primary'
-                                onPress={() => handleAddReturn(sale.id, sale.sale_details.customer_details.id)}
-                              >
-                                Agregar Devolución
-                              </Button>
-                              <Button
-                                size='sm'
-                                color='success'
-                                onPress={() => handleCollect(sale.id)}
-                              >
-                                Cobrar Totalmente
-                              </Button>
-                            </div>
+                          <div className="flex flex-wrap gap-1">
+                            <Button
+                              size='sm'
+                              color='primary'
+                              onPress={() => handleAddReturn(sale.id, sale.sale_details.customer_details.id)}
+                            >
+                              Agregar Devolución
+                            </Button>
+                            <Button
+                              size='sm'
+                              color='success'
+                              onPress={() => handleCollect(sale.id)}
+                            >
+                              Cobrar Totalmente
+                            </Button>
                           </div>
-                        </AccordionItem>
-                      ))}
-                    </Accordion>
-                  ) : (
-                    <p>No hay ventas para mostrar.</p>
-                  )}
-                </ModalBody>
-              </ScrollShadow>
+                        </div>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                ) : (
+                  <p>No hay ventas para mostrar.</p>
+                )}
+              </ModalBody>
 
               <ModalFooter>
                 <Button color="primary" onPress={handleCloseDetailsModal}>

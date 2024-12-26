@@ -56,7 +56,6 @@ try:
     )
     confirm_delete_button.click()
 
-    time.sleep(2)
     print("Gasto eliminado exitosamente.")
 
 except Exception as e:

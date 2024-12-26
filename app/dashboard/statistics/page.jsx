@@ -1,154 +1,113 @@
 "use client";
 
-import {
-  Tooltip,
-  Button,
-  Card,
-  CardHeader,
-  CardBody,
-  Spinner,
-  Tabs,
-  Tab,
-  DateRangePicker,
-} from "@nextui-org/react";
-import {
-  IconDownload,
-  IconTrendingUp,
-  IconCash,
-  IconArrowUpRight,
-} from "@tabler/icons-react";
-import { useState } from "react";
-import { formatDateForDisplay } from "@/app/utils";
+import { useCallback, useEffect, useState } from "react";
+import { Spinner, Tooltip, Button, DateRangePicker, Input, Select, SelectItem } from "@nextui-org/react";
+import { IconDownload } from "@tabler/icons-react";
 import { getLocalTimeZone } from "@internationalized/date";
-import useStatistics from "@/app/hooks/useStatistics";
-import dynamic from 'next/dynamic';
-import { IconArrowBack } from "@tabler/icons-react";
-const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
+import Cookies from "js-cookie";
+import api from "@/app/axios";
+
+import { getWeekNumber } from "@/app/utils";
+
+import StatisticsTabs from "./components/StatisticsTabs";
+import StatisticsCards from "./components/StatisticsCards";
+import TopProductsChart from "./components/TopProductsChart";
+import DailyBreakdownChart from "./components/DailyBreakdownChart";
+import MonthlyBreakdownChart from "./components/MonthlyBreakdownChart";
 
 export default function StatisticsPage() {
+  const [statistics, setStatistics] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [selectedTab, setSelectedTab] = useState("today");
-  const [customRange, setCustomRange] = useState({
-    start: null,
-    end: null,
+
+  const [week, setWeek] = useState(() => {
+    const now = new Date();
+    const weekNumber = getWeekNumber(now);
+    const year = now.getFullYear();
+    return `${year}-W${weekNumber < 10 ? '0' + weekNumber : weekNumber}`;
   });
 
-  const formattedRange = {
-    start_date: customRange.start ? customRange.start.toDate(getLocalTimeZone()).toISOString().split('T')[0] : null,
-    end_date: customRange.end ? customRange.end.toDate(getLocalTimeZone()).toISOString().split('T')[0] : null,
-  };
+  const [month, setMonth] = useState(() => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    return `${year}-${month < 10 ? '0' + month : month}`;
+  });
 
-  const { statistics, loading } = useStatistics(
-    selectedTab === "custom" && formattedRange.start_date && formattedRange.end_date ? formattedRange : {}
-  );
+  const [year, setYear] = useState("" + new Date().getFullYear());
 
-  if (loading) {
+  const [customRange, setCustomRange] = useState({ start: null, end: null });
+
+  const start_date = customRange.start
+    ? customRange.start.toDate(getLocalTimeZone()).toISOString().split("T")[0]
+    : null;
+  const end_date = customRange.end
+    ? customRange.end.toDate(getLocalTimeZone()).toISOString().split("T")[0]
+    : null;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const fetchStatistics = useCallback(async () => {
+    if (selectedTab === "custom") {
+      if (!start_date || !end_date) {
+        setStatistics({});
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    const token = Cookies.get("access_token");
+    let url = '/sales/statistics/';
+
+    if (selectedTab === "today") {
+      url += '?today';
+    } else if (selectedTab === "week" && week) {
+      url += `?week=${week}`;
+    } else if (selectedTab === "month" && month) {
+      url += `?month=${month}`;
+    } else if (selectedTab === "year" && year) {
+      url += `?year=${year}`;
+    } else if (selectedTab === "custom" && customRange.start && customRange.end) {
+      url += `?start_date=${start_date}&end_date=${end_date}`;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await api.get(url, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      });
+      setStatistics(response.data);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching statistics", error);
+      setIsLoading(false);
+      // Opcional: setError("Hubo un problema al cargar las estadísticas.");
+    }
+  }, [selectedTab, month, week, year, customRange.start, customRange.end, start_date, end_date]);
+
+  useEffect(() => {
+    if (isMounted) {
+      fetchStatistics();
+    } else {
+      setIsLoading(false);
+    }
+  }, [fetchStatistics, isMounted]);
+
+  const isPeriodIncomplete = selectedTab === "custom" && (!customRange.start || !customRange.end);
+  const showDailyBreakdown = (selectedTab === "week" || selectedTab === "month" || selectedTab === "custom") && !isPeriodIncomplete;
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Spinner size="lg">Cargando...</Spinner>
       </div>
     );
   }
-
-  const prepareChartData = () => {
-    const products = statistics[selectedTab]?.most_sold_products || [];
-    const topProducts = products.slice(0, 10);
-    const categories = topProducts.map((product) => product.product_name);
-    const seriesData = topProducts.map((product) => product.total_quantity_sold);
-
-    return {
-      categories,
-      seriesData,
-    };
-  };
-
-  const { categories, seriesData } = prepareChartData();
-
-  const chartOptions = {
-    chart: {
-      type: 'bar',
-      height: 350,
-      animations: {
-        enabled: true,
-        easing: 'easeinout',
-        speed: 800,
-        animateGradually: {
-          enabled: true,
-          delay: 150
-        },
-        dynamicAnimation: {
-          enabled: true,
-          speed: 350
-        }
-      }
-    },
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: '55%',
-        endingShape: 'rounded'
-      },
-    },
-    dataLabels: {
-      enabled: false
-    },
-    stroke: {
-      show: true,
-      width: 2,
-      colors: ['transparent']
-    },
-    xaxis: {
-      categories: categories,
-      title: {
-        text: 'Productos'
-      },
-      labels: {
-        rotate: -45,
-        style: {
-          fontSize: '12px',
-        }
-      },
-    },
-    yaxis: {
-      title: {
-        text: 'Cantidad Vendida'
-      }
-    },
-    fill: {
-      opacity: 1,
-      colors: ['#4CAF50']
-    },
-    tooltip: {
-      y: {
-        formatter: function (val) {
-          return `${val} unidades`;
-        }
-      }
-    },
-    responsive: [
-      {
-        breakpoint: 768,
-        options: {
-          plotOptions: {
-            bar: {
-              columnWidth: '70%',
-            }
-          },
-          xaxis: {
-            labels: {
-              rotate: -90
-            }
-          }
-        }
-      }
-    ]
-  };
-
-  const chartSeries = [
-    {
-      name: 'Cantidad Vendida',
-      data: seriesData
-    }
-  ];
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[92vw]">
@@ -167,25 +126,54 @@ export default function StatisticsPage() {
 
       {/* Tabs de Navegación */}
       <div className="flex w-full flex-col">
-        <Tabs
-          aria-label="Options"
-          variant="underlined"
-          classNames={{
-            tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider",
-            cursor: "w-full",
-            tab: "max-w-fit px-0 h-12",
-          }}
-          selectedKey={selectedTab}
-          onSelectionChange={setSelectedTab}
-        >
-          <Tab key="today" title="Hoy" value="today" />
-          <Tab key="week" title="Semana" value="week" />
-          <Tab key="month" title="Mes" value="month" />
-          <Tab key="custom" title="Rango de Fechas" value="custom" />
-        </Tabs>
+        <StatisticsTabs selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
       </div>
 
-      {/* Selector de Rango de Fechas para la Pestaña Custom */}
+      {/* Selector de Semana */}
+      {selectedTab === "week" && (
+        <div className="mt-4 w-fit">
+          <Input
+            type="week"
+            label="Semana"
+            placeholder="Selecciona una semana"
+            variant="underlined"
+            value={week}
+            onChange={(e) => setWeek(e.target.value)}
+          />
+        </div>
+      )}
+
+      {/* Selector de Mes */}
+      {selectedTab === "month" && (
+        <div className="mt-4 w-fit">
+          <Input
+            type="month"
+            label="Mes"
+            placeholder="Selecciona un mes"
+            variant="underlined"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+          />
+        </div>
+      )}
+
+      {/* Selector de Año */}
+      {selectedTab === "year" && (
+        <div className="mt-4 max-w-[200px]">
+          <Select
+            label="Año"
+            variant="underlined"
+            onChange={(e) => setYear(e.target.value)}
+            selectedKeys={[year]}
+            disallowEmptySelection={true}
+          >
+            <SelectItem key="2024" value="2024">2024</SelectItem>
+            <SelectItem key="2025" value="2025">2025</SelectItem>
+          </Select>
+        </div>
+      )}
+
+      {/* Selector de Rango de Fechas */}
       {selectedTab === "custom" && (
         <div className="mt-4 w-fit">
           <DateRangePicker
@@ -198,126 +186,21 @@ export default function StatisticsPage() {
         </div>
       )}
 
-      {/* Sección Mejorada de Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 w-full mt-6">
-        {/* Ventas */}
-        <Card isHoverable variant="bordered" className="shadow-lg">
-          <CardHeader className="flex items-center">
-            <IconCash className="w-6 h-6 text-green-500 mr-2" />
-            <p className="font-semibold">Ventas</p>
-          </CardHeader>
-          <CardBody>
-            <p className="text-lg font-semibold">{parseFloat(statistics[selectedTab]?.total_sales).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
-            <p className="text-green-500 text-sm">
-              {statistics[selectedTab]?.total_sales_count} ventas
-            </p>
-          </CardBody>
-        </Card>
-
-        {/* Devoluciones */}
-        <Card isHoverable variant="bordered" className="shadow-lg">
-          <CardHeader className="flex items-center">
-            <IconArrowBack className="w-6 h-6 text-red-500 mr-2" />
-            <p className="font-semibold">Devoluciones</p>
-          </CardHeader>
-          <CardBody>
-            <p className="text-lg font-semibold">{parseFloat(statistics[selectedTab]?.total_returns_amount).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
-          </CardBody>
-        </Card>
-
-        {/* Total Cobrado */}
-        <Card isHoverable variant="bordered" className="shadow-lg">
-          <CardHeader className="flex items-center">
-            <IconCash className="w-6 h-6 text-blue-500 mr-2" />
-            <p className="font-semibold">Total Cobrado</p>
-          </CardHeader>
-          <CardBody>
-            <p className="text-lg font-semibold">{parseFloat(statistics[selectedTab]?.total_collected_amount).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
-          </CardBody>
-        </Card>
-
-        {/* Gastos */}
-        <Card isHoverable variant="bordered" className="shadow-lg">
-          <CardHeader className="flex items-center">
-            <IconArrowUpRight className="w-6 h-6 text-yellow-500 mr-2" />
-            <p className="font-semibold">Gastos</p>
-          </CardHeader>
-          <CardBody>
-            <p className="text-lg font-semibold">{parseFloat(statistics[selectedTab]?.total_expenses).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
-          </CardBody>
-        </Card>
-
-        {/* Ganancias */}
-        <Card isHoverable variant="bordered" className="shadow-lg">
-          <CardHeader className="flex items-center">
-            <IconTrendingUp className="w-6 h-6 text-green-500 mr-2" />
-            <p className="font-semibold">Ganancias</p>
-          </CardHeader>
-          <CardBody>
-            <p className="text-lg font-semibold">{parseFloat(statistics[selectedTab]?.total_profit).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</p>
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* Productos Más Vendidos */}
-      <div className="w-full mt-6">
-        <Card isHoverable variant="bordered" className="shadow-lg">
-          <CardHeader>
-            <p className="font-semibold">Productos Más Vendidos</p>
-          </CardHeader>
-          <CardBody>
-            {categories.length > 0 ? (
-              <ReactApexChart
-                options={chartOptions}
-                series={chartSeries}
-                type="bar"
-                height={350}
-              />
-            ) : (
-              <p className="text-gray-500">No hay productos vendidos para esta pestaña.</p>
-            )}
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* Desgloses Diarios */}
-      {selectedTab !== "today" && statistics[selectedTab]?.daily_breakdown && (
-        <div className="w-full mt-6">
-          <Card variant="bordered" className="shadow-lg">
-            <CardHeader>
-              <p className="font-semibold">Desglose Diario</p>
-            </CardHeader>
-            <CardBody>
-              {statistics[selectedTab].daily_breakdown.length > 0 ? (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ventas</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Devoluciones</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cobrado</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gastos</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ganancias</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {statistics[selectedTab].daily_breakdown.map((day) => (
-                      <tr key={day.date}>
-                        <td className="px-6 py-4 whitespace-nowrap">{formatDateForDisplay(day.date, false)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{parseFloat(day.total_sales).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{parseFloat(day.total_returns).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{parseFloat(day.net_collected).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{parseFloat(day.daily_expenses).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{parseFloat(day.daily_profit).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p className="text-gray-500">No hay desgloses disponibles para esta pestaña.</p>
-              )}
-            </CardBody>
-          </Card>
+      {/* Mostrar mensaje si el período está incompleto */}
+      {isPeriodIncomplete ? (
+        <div className="mt-4 text-center text-gray-500">
+          Por favor, selecciona ambas fechas para ver las estadísticas.
+        </div>
+      ) : (
+        <div>
+          <StatisticsCards statistics={statistics} />
+          <TopProductsChart mostSoldProducts={statistics.most_sold_products} />
+          {showDailyBreakdown && (
+            <DailyBreakdownChart dailyBreakdown={statistics.daily_breakdown} />
+          )}
+          {selectedTab === "year" && (
+            <MonthlyBreakdownChart monthlyBreakdown={statistics.monthly_breakdown} />
+          )}
         </div>
       )}
     </div>
