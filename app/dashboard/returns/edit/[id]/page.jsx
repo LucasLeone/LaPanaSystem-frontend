@@ -51,6 +51,13 @@ export default function EditReturnPage() {
 
   useEffect(() => {
     if (return_ && !returnLoading) {
+      const saleState = return_.sale_details?.state;
+
+      if (["cobrada", "anulada", "cancelada"].includes(saleState)) {
+        router.back();
+        return;
+      }
+
       setCustomer(return_.sale_details?.customer_details?.id?.toString() || null);
       setSale(return_.sale_details?.id?.toString() || null);
       setDate(return_.date ? return_.date.split("T")[0] : getTodayDate());
@@ -66,7 +73,7 @@ export default function EditReturnPage() {
       }
       setIsReturnLoaded(true);
     }
-  }, [return_, returnLoading]);
+  }, [return_, returnLoading, router]);
 
   const { sales, loading: salesLoading, error: salesError } = useSales({
     sale_type: 'mayorista',
@@ -204,7 +211,7 @@ export default function EditReturnPage() {
     }
 
     const returnData = {
-      ...(date ? { date: new Date(date).toISOString().split("T")[0] } : {}),
+      ...(date ? { date: date } : {}),
       sale: sale ? parseInt(sale, 10) : null,
       return_details: returnDetails.map((detail) => ({
         product: parseInt(detail.product, 10),

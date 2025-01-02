@@ -24,7 +24,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import useCustomers from "@/app/hooks/useCustomers";
 import useProducts from "@/app/hooks/useProducts";
 import useSales from "@/app/hooks/useSales";
-import { formatDateForDisplay } from "@/app/utils";
+import { formatDateForDisplay, getTodayDate } from "@/app/utils";
 
 export default function CreateReturnPage() {
   const searchParams = useSearchParams();
@@ -52,14 +52,6 @@ export default function CreateReturnPage() {
   );
 
   const router = useRouter();
-
-  function getTodayDate() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
 
   const isValidQuantity = (quantity, maxQuantity) => {
     const validFormat = /^\d+(\.\d{1,3})?$/.test(quantity);
@@ -93,6 +85,11 @@ export default function CreateReturnPage() {
 
     if (!sale) {
       setError("Por favor, selecciona una venta.");
+      return false;
+    }
+
+    if (!date) {
+      setError("Por favor, selecciona una fecha.");
       return false;
     }
 
@@ -175,7 +172,7 @@ export default function CreateReturnPage() {
     }
 
     const returnData = {
-      ...(date ? { date: new Date(date).toISOString().split("T")[0] } : {}),
+      ...(date ? { date: date } : {}),
       sale: sale ? parseInt(sale, 10) : null,
       return_details: returnDetails.map((detail) => ({
         product: parseInt(detail.product, 10),
@@ -318,14 +315,14 @@ export default function CreateReturnPage() {
                 key={saleItem.id}
                 value={saleItem.id.toString()}
               >
-                Venta #{saleItem.id} - {saleItem.date ? formatDateForDisplay(saleItem.date) : null}
+                Venta #{saleItem.id} - {saleItem.date ? formatDateForDisplay(new Date(saleItem.date)) : null}
               </AutocompleteItem>
             ))}
           </Autocomplete>
         )}
 
         <Input
-          label="Fecha (Opcional)"
+          label="Fecha"
           placeholder="Selecciona una fecha"
           value={date}
           onChange={(e) => {
@@ -334,8 +331,9 @@ export default function CreateReturnPage() {
           }}
           fullWidth
           variant="underlined"
-          type="date"
+          type="datetime-local"
           aria-label="Fecha de Devolución"
+          isRequired
         />
 
         <div className="space-y-4">

@@ -7,7 +7,7 @@ import { getLocalTimeZone } from "@internationalized/date";
 import Cookies from "js-cookie";
 import api from "@/app/axios";
 
-import { getWeekNumber } from "@/app/utils";
+import { getISOWeek, getISOWeekYear } from 'date-fns';
 
 import StatisticsTabs from "./components/StatisticsTabs";
 import StatisticsCards from "./components/StatisticsCards";
@@ -23,9 +23,9 @@ export default function StatisticsPage() {
 
   const [week, setWeek] = useState(() => {
     const now = new Date();
-    const weekNumber = getWeekNumber(now);
-    const year = now.getFullYear();
-    return `${year}-W${weekNumber < 10 ? '0' + weekNumber : weekNumber}`;
+    const weekNumber = getISOWeek(now);
+    const weekYear = getISOWeekYear(now);
+    return `${weekYear}-W${weekNumber < 10 ? '0' + weekNumber : weekNumber}`;
   });
 
   const [month, setMonth] = useState(() => {

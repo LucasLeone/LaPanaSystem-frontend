@@ -25,6 +25,10 @@ import {
   DateRangePicker,
   Accordion,
   AccordionItem,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem
 } from "@nextui-org/react";
 import {
   IconDownload,
@@ -34,6 +38,7 @@ import {
   IconChevronUp,
   IconChevronDown,
   IconEdit,
+  IconDots,
 } from "@tabler/icons-react";
 import { useState, useMemo, useCallback } from "react";
 import api from "@/app/axios";
@@ -214,78 +219,78 @@ export default function ReturnsPage() {
     { key: "actions", label: "Acciones", sortable: false },
   ];
 
-  const rows = useMemo(
-    () =>
-      returns.map((returnItem) => ({
+  const rows = useMemo(() => {
+    return returns.map((returnItem) => {
+      const isReturnDisabled =
+        returnItem.sale_details.state === "cobrada" ||
+        returnItem.sale_details.state === "anulada" ||
+        returnItem.sale_details.state === "cancelada";
+
+      return {
         id: returnItem.id,
-        date: new Date(returnItem.date).toLocaleDateString("es-AR", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        }),
+        date: formatDateForDisplay(new Date(returnItem.date)),
         user:
           returnItem.user_details?.first_name +
           " " +
           returnItem.user_details?.last_name ||
           "",
         customer: returnItem.sale_details.customer_details?.name || "",
-        sale: "#" + returnItem.sale_details.id + " - " + new Date(returnItem.sale_details.date).toLocaleDateString("es-AR", {
-          year: "numeric",
-          month: "numeric",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }),
+        sale:
+          "#" +
+          returnItem.sale_details.id +
+          " - " +
+          new Date(returnItem.sale_details.date).toLocaleDateString("es-AR", {
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }),
         total: `${parseFloat(returnItem.total).toLocaleString("es-AR", {
           style: "currency",
           currency: "ARS",
         })}`,
         actions: (
           <div className="flex gap-1">
-            <Tooltip content="Ver Detalles">
-              <Button
-                variant="light"
-                className="rounded-md"
-                isIconOnly
-                color="primary"
-                onPress={() => handleViewClick(returnItem)}
-                aria-label={`Ver detalles de la devolución ${returnItem.id}`}
+            <Dropdown>
+              <DropdownTrigger>
+                <Button isIconOnly variant="light">
+                  <IconDots className="w-5" />
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Opciones de Devolución"
+                disabledKeys={isReturnDisabled ? ["edit", "delete"] : []}
               >
-                <IconChevronDown className="h-5" />
-              </Button>
-            </Tooltip>
-            <Tooltip content="Editar">
-              <Button
-                variant="light"
-                className="rounded-md"
-                isIconOnly
-                color="warning"
-                onPress={() =>
-                  router.push(`/dashboard/returns/edit/${returnItem.id}`)
-                }
-                aria-label={`Editar devolución ${returnItem.id}`}
-              >
-                <IconEdit className="h-5" />
-              </Button>
-            </Tooltip>
-            <Tooltip content="Eliminar">
-              <Button
-                variant="light"
-                className="rounded-md"
-                isIconOnly
-                color="danger"
-                onPress={() => handleDeleteClick(returnItem)}
-                aria-label={`Eliminar devolución ${returnItem.id}`}
-              >
-                <IconTrash className="h-5" />
-              </Button>
-            </Tooltip>
+                <DropdownItem
+                  key="view"
+                  onPress={() => handleViewClick(returnItem)}
+                >
+                  Ver Detalles
+                </DropdownItem>
+                <DropdownItem
+                  key="edit"
+                  onPress={() =>
+                    router.push(`/dashboard/returns/edit/${returnItem.id}`)
+                  }
+                >
+                  Editar
+                </DropdownItem>
+                <DropdownItem
+                  key="delete"
+                  onPress={() => handleDeleteClick(returnItem)}
+                  className="text-danger"
+                >
+                  Eliminar
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
           </div>
         ),
-      })),
-    [returns, handleDeleteClick, handleViewClick, router]
-  );
+      };
+    });
+  }, [returns, handleDeleteClick, handleViewClick, router]);
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
 
@@ -318,9 +323,8 @@ export default function ReturnsPage() {
 
       return (
         <div
-          className={`flex items-center ${
-            isSortable ? "cursor-pointer" : ""
-          }`}
+          className={`flex items-center ${isSortable ? "cursor-pointer" : ""
+            }`}
           onClick={() => isSortable && handleSortChange(column.key)}
           aria-sort={isSorted ? direction : "none"}
         >
@@ -360,24 +364,8 @@ export default function ReturnsPage() {
         </div>
       </div>
 
-      {/* Búsqueda y Filtros */}
+      {/* Filtros */}
       <div className="flex flex-col md:flex-row md:justify-end items-start md:items-center space-y-4 md:space-y-0 space-x-0 md:space-x-4 mb-6">
-        {/* <Input
-          placeholder="Buscar devoluciones"
-          startContent={<IconSearch className="h-4" />}
-          radius="none"
-          variant="underlined"
-          value={searchQuery}
-          onChange={handleSearchChange}
-          onClear={() => {
-            setSearchQuery("");
-            setPage(1);
-          }}
-          className="w-full md:w-1/3"
-          aria-label="Buscar devoluciones"
-          isClearable={true}
-          isDisabled
-        /> */}
         <Button
           variant="bordered"
           className="rounded-md border-1.5"
@@ -696,7 +684,7 @@ export default function ReturnsPage() {
                   >
                     <div className="overflow-x-auto max-h-60 border rounded-md">
                       {returnToView?.return_details &&
-                      returnToView.return_details.length > 0 ? (
+                        returnToView.return_details.length > 0 ? (
                         <Table
                           aria-label="Items de la Devolución"
                           className="border-none min-w-full"

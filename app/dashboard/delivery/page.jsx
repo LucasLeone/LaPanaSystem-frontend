@@ -40,6 +40,7 @@ import { capitalize } from "@/app/utils";
 import { parseDate } from '@internationalized/date';
 import { IconDots } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
+import { formatDateForDisplay } from '@/app/utils';
 
 const STATE_CHOICES = {
   creada: "Creada",
@@ -178,11 +179,7 @@ export default function PendingDeliveriesPage() {
   const rows = useMemo(() => (
     currentItems.map(sale => ({
       id: sale.id,
-      date: new Date(sale.date).toLocaleDateString('es-AR', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      }),
+      date: formatDateForDisplay(new Date(sale.date), false),
       customer: sale.customer_details?.name || '',
       total: `${parseFloat(sale.total).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}`,
       state: STATE_CHOICES[sale.state] || capitalize(sale.state),
@@ -275,7 +272,7 @@ export default function PendingDeliveriesPage() {
             aria-label="Ventas Pendientes de Entrega"
             className="border-none min-w-full"
             shadow="none"
-            isCompact
+            // isCompact
             removeWrapper
           >
             <TableHeader columns={columns}>
