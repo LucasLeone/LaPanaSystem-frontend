@@ -120,7 +120,7 @@ export default function EditReturnPage() {
     );
   }, [selectedSale]);
 
-  const isValidReturn = () => {
+  const isValidReturn = useCallback(() => {
     if (!customer) {
       setError("Por favor, selecciona un cliente.");
       return false;
@@ -163,7 +163,7 @@ export default function EditReturnPage() {
     }
 
     return true;
-  };
+  }, [customer, sale, returnDetails, productQuantityMap, saleProductIds]);
 
   const handleDetailChange = (index, field, value) => {
     const newDetails = [...returnDetails];

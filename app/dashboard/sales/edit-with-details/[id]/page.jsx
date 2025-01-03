@@ -85,7 +85,7 @@ export default function EditSalePage() {
     } else {
       setSaleDetails([{ product: null, quantity: "" }]);
     }
-  }, [sale]);
+  }, [router, sale]);
 
   const saleDetailsWithPrices = useMemo(() => {
     return saleDetails.map((detail, index) => {

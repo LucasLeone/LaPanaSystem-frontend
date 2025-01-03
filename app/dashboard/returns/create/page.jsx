@@ -17,7 +17,7 @@ import {
   AutocompleteItem,
 } from "@nextui-org/react";
 import { IconPlus, IconArrowLeft, IconTrash } from "@tabler/icons-react";
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, Suspense } from "react";
 import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -26,7 +26,7 @@ import useProducts from "@/app/hooks/useProducts";
 import useSales from "@/app/hooks/useSales";
 import { formatDateForDisplay, getTodayDate } from "@/app/utils";
 
-export default function CreateReturnPage() {
+const CreateReturnPage = () => {
   const searchParams = useSearchParams();
   const saleId = searchParams.get("sale");
   const customerId = searchParams.get("customer");
@@ -485,3 +485,11 @@ export default function CreateReturnPage() {
     </div>
   );
 }
+
+const CreateReturnPageWrapper = () => (
+  <Suspense fallback={<p>Cargando...</p>}>
+    <CreateReturnPage />
+  </Suspense>
+);
+
+export default CreateReturnPageWrapper;
