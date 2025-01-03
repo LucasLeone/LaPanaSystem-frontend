@@ -81,91 +81,86 @@ const SalesTable = ({
     [sortDescriptor, onSortChange]
   );
 
-  const rows = useMemo(
-    () =>
-      sales.map((sale) => {
-        const isCancelDisabled =
-          sale.state === "anulada" || sale.state === "cancelada";
+  const rows = useMemo(() =>
+    sales.map((sale) => {
+      const isAnuladaOCancelada = sale.state === "anulada" || sale.state === "cancelada";
+      const isCobrada = sale.state === "cobrada";
 
-        return {
-          id: sale.id,
-          date: new Date(sale.date).toLocaleString("es-AR", {
-            year: "numeric",
-            month: "numeric",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          }),
-          customer: sale.customer_details?.name || "",
-          seller: sale.user_details?.username || "",
-          total: `${parseFloat(sale.total).toLocaleString("es-AR", {
-            style: "currency",
-            currency: "ARS",
-          })}`,
-          total_collected: `${parseFloat(sale.total_collected).toLocaleString(
-            "es-AR",
-            {
-              style: "currency",
-              currency: "ARS",
-            }
-          )}`,
-          sale_type:
-            SALE_TYPE_CHOICES.find((item) => item.id === sale.sale_type)
-              ?.name || sale.sale_type,
-          payment_method:
-            PAYMENT_METHOD_CHOICES.find(
-              (item) => item.id === sale.payment_method
-            )?.name || sale.payment_method,
-          state:
-            STATE_CHOICES.find((item) => item.id === sale.state)?.name ||
-            sale.state,
-          needs_delivery: sale.needs_delivery ? "Sí" : "No",
-          actions: (
-            <div className="flex gap-1">
-              <Dropdown>
-                <DropdownTrigger>
-                  <Button isIconOnly variant="light">
-                    <IconDots className="w-5" />
-                  </Button>
-                </DropdownTrigger>
-                <DropdownMenu
-                  aria-label="Opciones de Venta"
-                  disabledKeys={isCancelDisabled ? ["cancel"] : []}
+      const disabledKeys = isAnuladaOCancelada
+        ? ["cancel", "edit"]
+        : isCobrada
+          ? ["edit"]
+          : [];
+
+      return {
+        id: sale.id,
+        date: new Date(sale.date).toLocaleString("es-AR", {
+          year: "numeric",
+          month: "numeric",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }),
+        customer: sale.customer_details?.name || "",
+        seller: sale.user_details?.username || "",
+        total: `${parseFloat(sale.total).toLocaleString("es-AR", {
+          style: "currency",
+          currency: "ARS",
+        })}`,
+        total_collected: `${parseFloat(sale.total_collected).toLocaleString("es-AR", {
+          style: "currency",
+          currency: "ARS",
+        })}`,
+        sale_type:
+          SALE_TYPE_CHOICES.find((item) => item.id === sale.sale_type)?.name ||
+          sale.sale_type,
+        payment_method:
+          PAYMENT_METHOD_CHOICES.find((item) => item.id === sale.payment_method)?.name ||
+          sale.payment_method,
+        state:
+          STATE_CHOICES.find((item) => item.id === sale.state)?.name || sale.state,
+        needs_delivery: sale.needs_delivery ? "Sí" : "No",
+        actions: (
+          <div className="flex gap-1">
+            <Dropdown>
+              <DropdownTrigger>
+                <Button isIconOnly variant="light">
+                  <IconDots className="w-5" />
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Opciones de Venta"
+                disabledKeys={disabledKeys}
+              >
+                <DropdownItem
+                  key="view"
+                  onPress={() => onViewClick(sale)}
                 >
-                  <DropdownItem
-                    key="view"
-                    onPress={() => onViewClick(sale)}
-                  >
-                    Ver Detalles
-                  </DropdownItem>
-                  <DropdownItem
-                    key="edit"
-                    onPress={() => onEditClick(sale)}
-                  >
-                    Editar
-                  </DropdownItem>
-                  <DropdownItem
-                    key="cancel"
-                    onPress={() => onCancelClick(sale)}
-                    className={
-                      isCancelDisabled
-                        ? "text-default-400"
-                        : "text-danger"
-                    }
-                  >
-                    {["creada", "pendiente_entrega", "entregada"].includes(
-                      sale.state
-                    )
-                      ? "Cancelar"
-                      : "Anular"}
-                  </DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
-            </div>
-          ),
-        };
-      }),
+                  Ver Detalles
+                </DropdownItem>
+                <DropdownItem
+                  key="edit"
+                  onPress={() => onEditClick(sale)}
+                  className={disabledKeys.includes("edit") ? "text-default-400" : ""}
+                >
+                  Editar
+                </DropdownItem>
+                <DropdownItem
+                  key="cancel"
+                  onPress={() => onCancelClick(sale)}
+                  className={disabledKeys.includes("cancel") ? "text-default-400" : "text-danger"}
+                >
+                  {["creada", "pendiente_entrega", "entregada"].includes(sale.state)
+                    ? "Cancelar"
+                    : "Anular"}
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          </div>
+        ),
+      };
+    }),
     [sales, onViewClick, onEditClick, onCancelClick]
   );
 

@@ -28,7 +28,6 @@ import useProducts from "@/app/hooks/useProducts";
 import useCustomers from "@/app/hooks/useCustomers";
 import useSale from "@/app/hooks/useSale";
 import { formatDateToISO } from "@/app/utils";
-import { parseDateTime } from "@internationalized/date";
 import { parseAbsoluteToLocal } from "@internationalized/date";
 
 const PAYMENT_METHOD_CHOICES = [
@@ -70,6 +69,10 @@ export default function EditSalePage() {
   };
 
   useEffect(() => {
+    if (sale.state === "cobrada" || sale.state === "cancelada" || sale.state === "anulada") {
+      router.back();
+      return;
+    };
     setCustomer(sale.customer_details?.id);
     setSaleType(sale.sale_type);
     setDate(sale.date ? parseAbsoluteToLocal(sale.date) : null)
