@@ -46,8 +46,8 @@ export default function EditCustomerPage() {
     setLoadingUpdate(true);
     setErrorUpdate(null);
 
-    if (!name || !email || !phone || !address) {
-      setErrorUpdate("Todos los campos son requeridos.");
+    if (!name || !customerType) {
+      setErrorUpdate("El nombre y el tipo de cliente son obligatorios.");
       setLoadingUpdate(false);
       return;
     }
@@ -112,6 +112,7 @@ export default function EditCustomerPage() {
           onChange={(e) => setName(e.target.value)}
           fullWidth
           variant="underlined"
+          isRequired
         />
         <Input
           label="Correo Electrónico"
@@ -147,6 +148,7 @@ export default function EditCustomerPage() {
             onChange={(e) => setCustomerType(e.target.value)}
             variant="underlined"
             selectedKeys={[customerType]}
+            isRequired
           >
             <SelectItem key="minorista" value="minorista">Minorista</SelectItem>
             <SelectItem key="mayorista" value="mayorista">Mayorista</SelectItem>

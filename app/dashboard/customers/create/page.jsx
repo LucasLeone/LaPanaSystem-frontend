@@ -47,12 +47,6 @@ export default function CreateCustomerPage() {
       return;
     }
 
-    if (customerType === "mayorista" && !address) {
-      setError("Los clientes mayoristas deben tener una dirección.");
-      setLoading(false);
-      return;
-    }
-
     if (email && !isValidEmail(email)) {
       setError("Correo electrónico inválido.");
       setLoading(false);
