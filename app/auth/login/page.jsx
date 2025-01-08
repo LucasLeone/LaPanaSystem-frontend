@@ -83,7 +83,7 @@ export default function LoginPage() {
             </div>
           }
           endContent={
-            <Button isIconOnly size='sm' variant='light' className="focus:outline-none" type="button" onClick={toggleVisibility} aria-label="toggle password visibility">
+            <Button isIconOnly size='sm' variant='light' className="focus:outline-none" type="button" onPress={toggleVisibility} aria-label="toggle password visibility">
               {isVisible ? (
                 <EyeSlashIcon className="h-6 text-default-400 pointer-events-none" />
               ) : (

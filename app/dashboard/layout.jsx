@@ -15,7 +15,8 @@ import {
   IconChartBar,
   IconArrowBackUp,
   IconTruckDelivery,
-  IconCash
+  IconCash,
+  IconDeviceDesktop
 } from "@tabler/icons-react";
 import { Link } from "@nextui-org/react";
 import { motion } from "framer-motion";
@@ -56,6 +57,7 @@ export default function DashboardLayout({ children }) {
     { label: "Devoluciones", path: "/dashboard/returns", icon: <IconArrowBackUp />, rolesAllowed: ["ADMIN", "DELIVERY"] },
     { label: "Repartir", path: "/dashboard/delivery", icon: <IconTruckDelivery />, rolesAllowed: ["ADMIN", "DELIVERY"] },
     { label: "Cobrar", path: "/dashboard/collect", icon: <IconCash />, rolesAllowed: ["ADMIN", "DELIVERY"] },
+    { label: "Punto de Venta", path: "/", icon: <IconDeviceDesktop />, rolesAllowed: ["ADMIN", "SELLER"] },
     {
       label: "Cerrar sesión",
       onClick: handleLogout,

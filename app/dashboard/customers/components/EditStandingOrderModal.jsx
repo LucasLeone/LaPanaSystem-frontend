@@ -9,12 +9,14 @@ import {
   Button,
   Input,
   Spinner,
+  Select,
+  SelectItem,
+  Alert,
 } from "@nextui-org/react";
 import { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import { DAY_NAMES } from "../page";
 import api from "@/app/axios";
-import { Autocomplete, AutocompleteItem } from "@nextui-org/react";
 
 export default function EditStandingOrderModal({
   editingStandingOrder,
@@ -25,22 +27,24 @@ export default function EditStandingOrderModal({
 }) {
   const [localOrder, setLocalOrder] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
+  const [errorTitle, setErrorTitle] = useState(null);
+  const [errorDescription, setErrorDescription] = useState(null);
 
   useEffect(() => {
     if (editingStandingOrder) {
       setLocalOrder(JSON.parse(JSON.stringify(editingStandingOrder)));
     } else {
       setLocalOrder(null);
-    }
+    };
+    setErrorTitle(null);
+    setErrorDescription(null);
   }, [editingStandingOrder]);
 
   if (!localOrder) {
     return null;
   }
 
-  const handleDetailProductChange = (keys, index) => {
-    const productId = keys;
+  const handleDetailProductChange = (productId, index) => {
     setLocalOrder((prevOrder) => {
       const newDetails = [...prevOrder.details];
       newDetails[index] = { ...newDetails[index], product: productId };
@@ -52,7 +56,7 @@ export default function EditStandingOrderModal({
     const value = e.target.value;
     const parsedValue = parseFloat(value);
 
-    if (isNaN(parsedValue) || parsedValue < 0) {
+    if (parsedValue > 99) {
       return;
     }
 
@@ -71,25 +75,57 @@ export default function EditStandingOrderModal({
   };
 
   const handleAddDetail = () => {
-    setLocalOrder((prevOrder) => ({
-      ...prevOrder,
-      details: [
-        ...prevOrder.details,
-        { id: null, product: "", quantity: 0.0 },
-      ],
-    }));
+    setLocalOrder((prevOrder) => {
+      if (prevOrder.details.length >= 3) {
+        return prevOrder;
+      }
+      return {
+        ...prevOrder,
+        details: [
+          ...prevOrder.details,
+          { id: null, product: "", quantity: "" },
+        ],
+      };
+    });
   };
 
   const handleSaveStandingOrder = async () => {
     setSaving(true);
-    setError(null);
+    setErrorTitle(null);
+    setErrorDescription(null);
 
     try {
       const hasInvalidDetails = localOrder.details.some(
         (detail) => !detail.product
       );
       if (hasInvalidDetails) {
-        alert("Todos los detalles deben tener un producto seleccionado.");
+        setErrorTitle("Detalles inválidos");
+        setErrorDescription("Debe seleccionar un producto para cada detalle.");
+        setSaving(false);
+        return;
+      }
+
+      const productIds = localOrder.details.map((detail) => detail.product);
+      if (new Set(productIds).size !== productIds.length) {
+        setErrorTitle("Detalle duplicado");
+        setErrorDescription("No puede haber dos detalles con el mismo producto.");
+        setSaving(false);
+        return;
+      }
+
+      const hasInvalidQuantities = localOrder.details.some(
+        (detail) => isNaN(detail.quantity) || detail.quantity <= 0
+      );
+      if (hasInvalidQuantities) {
+        setErrorTitle("Cantidad inválida");
+        setErrorDescription("Todas las cantidades deben ser mayores a 0.");
+        setSaving(false);
+        return;
+      }
+
+      if (localOrder.details.length === 0) {
+        setErrorTitle("Detalles inválidos");
+        setErrorDescription("Debe agregar al menos un detalle al pedido.");
         setSaving(false);
         return;
       }
@@ -134,7 +170,8 @@ export default function EditStandingOrderModal({
       setEditingStandingOrder(null);
     } catch (err) {
       console.error("Error al guardar el pedido diario:", err);
-      setError("Hubo un error al guardar el pedido diario.");
+      setErrorTitle("Error al guardar");
+      setErrorDescription("Hubo un error al guardar el pedido diario.");
     } finally {
       setSaving(false);
     }
@@ -171,7 +208,8 @@ export default function EditStandingOrderModal({
       setEditingStandingOrder(null);
     } catch (err) {
       console.error("Error al eliminar el pedido diario:", err);
-      setError("Hubo un error al eliminar el pedido diario.");
+      setErrorTitle("Error al eliminar");
+      setErrorDescription("Hubo un error al eliminar el pedido diario.");
     } finally {
       setSaving(false);
     }
@@ -193,8 +231,12 @@ export default function EditStandingOrderModal({
               {DAY_NAMES[localOrder.day_of_week]}
             </ModalHeader>
             <ModalBody>
-              {error && (
-                <p className="text-red-500 text-sm mb-2">{error}</p>
+              {errorTitle && (
+                <Alert
+                  description={errorDescription}
+                  title={errorTitle}
+                  color="danger"
+                />
               )}
               {localOrder && (
                 <div className="space-y-4">
@@ -203,25 +245,33 @@ export default function EditStandingOrderModal({
                       key={detail.id || index}
                       className="flex items-center space-x-4"
                     >
-                      <Autocomplete
+                      <Select
                         placeholder="Seleccionar Producto"
-                        value={detail.product.toString()}
-                        selectedKey={
-                          detail.product ? detail.product.toString() : []
+                        selectedKeys={
+                          detail.product
+                            ? new Set([detail.product.toString()])
+                            : new Set()
                         }
-                        onSelectionChange={(keys) =>
-                          handleDetailProductChange(keys, index)
-                        }
-                        aria-label={`Seleccionar producto para detalle ${index + 1}`}
+                        onSelectionChange={(keys) => {
+                          if (keys.size) {
+                            const [productId] = Array.from(keys);
+                            handleDetailProductChange(productId, index);
+                          }
+                        }}
+                        aria-label={`Seleccionar producto para detalle ${index + 1
+                          }`}
                       >
-                        {Object.values(productsMap).map((prod) => (
-                          <AutocompleteItem key={prod.id} value={prod.id}>
-                            {prod.name}
-                          </AutocompleteItem>
-                        ))}
-                      </Autocomplete>
+                        {Object.values(productsMap)
+                          .filter((prod) =>
+                            ["0001", "0002", "0003"].includes(prod.barcode)
+                          )
+                          .map((prod) => (
+                            <SelectItem key={prod.id} value={prod.id.toString()}>
+                              {prod.name}
+                            </SelectItem>
+                          ))}
+                      </Select>
 
-                      {/* Campo de Cantidad */}
                       <Input
                         type="number"
                         value={detail.quantity}
@@ -239,11 +289,11 @@ export default function EditStandingOrderModal({
                       </Button>
                     </div>
                   ))}
-                  {/* Botón para agregar un nuevo producto */}
                   <Button
                     color="primary"
                     variant="light"
                     onPress={handleAddDetail}
+                    isDisabled={localOrder.details.length >= 3}
                   >
                     Agregar Producto
                   </Button>
@@ -256,7 +306,7 @@ export default function EditStandingOrderModal({
                   color="danger"
                   variant="light"
                   onPress={handleDeleteStandingOrder}
-                  disabled={saving}
+                  isDisabled={saving}
                 >
                   {saving ? <Spinner size="sm" /> : "Eliminar Pedido Diario"}
                 </Button>
@@ -264,12 +314,20 @@ export default function EditStandingOrderModal({
               <Button
                 color="primary"
                 variant="light"
-                onPress={() => setEditingStandingOrder(null)}
-                disabled={saving}
+                onPress={() => {
+                  setEditingStandingOrder(null);
+                  setErrorTitle(null);
+                  setErrorDescription(null);
+                }}
+                isDisabled={saving}
               >
                 Cancelar
               </Button>
-              <Button color="primary" onPress={handleSaveStandingOrder} disabled={saving}>
+              <Button
+                color="primary"
+                onPress={handleSaveStandingOrder}
+                isDisabled={saving}
+              >
                 {saving ? <Spinner size="sm" /> : "Guardar"}
               </Button>
             </ModalFooter>

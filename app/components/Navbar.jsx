@@ -60,7 +60,7 @@ export default function AppNavbar() {
           <DropdownMenu aria-label="Opciones de usuario">
             <DropdownItem key="profile">Perfil</DropdownItem>
             <DropdownItem key="settings">Configuración</DropdownItem>
-            <DropdownItem key="logout" color="danger" withDivider onClick={handleLogout}>
+            <DropdownItem key="logout" color="danger" withDivider onPress={handleLogout}>
               Cerrar Sesión
             </DropdownItem>
           </DropdownMenu>

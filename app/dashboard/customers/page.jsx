@@ -32,6 +32,7 @@ import CustomersTable from "./components/CustomersTable";
 import ConfirmationModal from "./components/ConfirmationModal";
 import StandingOrdersModal from "./components/StandingOrdersModal";
 import EditStandingOrderModal from "./components/EditStandingOrderModal";
+import toast from "react-hot-toast";
 
 export const DAY_NAMES = [
   "Lunes",
@@ -301,10 +302,10 @@ export default function CustomersPage() {
         );
         setStandingOrders(sortedOrders);
 
-        alert("¡Pedido copiado a todos los días, sobrescribiendo los existentes!");
+        toast.success("¡Pedido copiado a todos los días!");
       } catch (err) {
         console.error("Error al copiar el pedido diario:", err);
-        alert("Ocurrió un error al copiar el pedido diario.");
+        toast.error("Error al copiar el pedido diario.");
       }
     },
     [selectedCustomer, standingOrders, setStandingOrders]
