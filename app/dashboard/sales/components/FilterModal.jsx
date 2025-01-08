@@ -56,7 +56,6 @@ const FilterModal = ({
   customers,
   users,
 }) => {
-  // Estados Temporales de Filtros
   const [tempFilterState, setTempFilterState] = useState(new Set(DEFAULT_STATE_FILTERS));
   const [tempFilterSaleType, setTempFilterSaleType] = useState(null);
   const [tempFilterPaymentMethod, setTempFilterPaymentMethod] = useState(null);
@@ -66,21 +65,6 @@ const FilterModal = ({
   const [tempFilterMaxTotal, setTempFilterMaxTotal] = useState("");
   const [tempFilterDate, setTempFilterDate] = useState(null);
   const [tempFilterDateRange, setTempFilterDateRange] = useState(null);
-
-  // Resetear filtros cuando se abre el modal
-  useEffect(() => {
-    if (isOpen) {
-      setTempFilterState(new Set(DEFAULT_STATE_FILTERS));
-      setTempFilterSaleType(null);
-      setTempFilterPaymentMethod(null);
-      setTempFilterCustomer(null);
-      setTempFilterUser(null);
-      setTempFilterMinTotal("");
-      setTempFilterMaxTotal("");
-      setTempFilterDate(null);
-      setTempFilterDateRange(null);
-    }
-  }, [isOpen]);
 
   const handleApply = () => {
     applyFilters({
@@ -94,10 +78,21 @@ const FilterModal = ({
       date: tempFilterDate,
       date_range: tempFilterDateRange,
     });
+    onClose();
   };
 
   const handleClear = () => {
     clearFilters();
+
+    setTempFilterState(new Set(DEFAULT_STATE_FILTERS));
+    setTempFilterSaleType(null);
+    setTempFilterPaymentMethod(null);
+    setTempFilterCustomer(null);
+    setTempFilterUser(null);
+    setTempFilterMinTotal("");
+    setTempFilterMaxTotal("");
+    setTempFilterDate(null);
+    setTempFilterDateRange(null);
   };
 
   return (
