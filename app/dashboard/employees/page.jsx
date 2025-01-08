@@ -40,15 +40,13 @@ import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import useUsers from "@/app/hooks/useUsers";
-import { capitalize } from "@/app/utils";
+import toast from "react-hot-toast";
 
 export default function EmployeesPage() {
   const router = useRouter();
 
-  // Estado para el usuario
   const [user, setUser] = useState(null);
 
-  // useEffect para obtener el usuario
   useEffect(() => {
     const userData = Cookies.get("user");
     if (userData) {
@@ -61,27 +59,22 @@ export default function EmployeesPage() {
     }
   }, []);
 
-  // Estados para filtros y ordenamiento
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   const [filterKey, setFilterKey] = useState(null);
   const [sortDescriptor, setSortDescriptor] = useState({ column: null, direction: null });
   const [page, setPage] = useState(1);
 
-  // Estados para eliminación de empleados
   const [employeeToDelete, setEmployeeToDelete] = useState(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState(null);
 
-  // Opciones de filtro para tipo de usuario
   const filterItems = [
     { key: "SELLER", label: "Vendedor" },
     { key: "DELIVERY", label: "Repartidor" },
     { key: "ADMIN", label: "Administrador" },
   ];
 
-  // Mapeo de etiquetas de tipo de usuario
   const USER_TYPE_LABELS = useMemo(() => ({
     SELLER: "Vendedor",
     DELIVERY: "Repartidor",
@@ -94,19 +87,16 @@ export default function EmployeesPage() {
     return prefix + sortDescriptor.column;
   }, [sortDescriptor]);
 
-  // Calculo de offset basado en la página actual
   const offset = useMemo(() => (page - 1) * 10, [page]);
 
-  // Uso del hook useUsers con los parámetros actuales
   const { users: employees, totalCount, loading: usersLoading, error: usersError, fetchUsers } = useUsers({
     search: debouncedSearchQuery,
-    user_type: filterKey, // assuming useUsers expects 'user_type' as filter
+    user_type: filterKey,
     ordering: orderingParam,
     offset,
     limit: 10,
   });
 
-  // Función para manejar el filtro por tipo de usuario
   const handleFilterAction = useCallback((key) => {
     if (key === "none") {
       setFilterKey(null);
@@ -116,19 +106,16 @@ export default function EmployeesPage() {
     setPage(1);
   }, []);
 
-  // Función para manejar la búsqueda
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
     setPage(1);
   }, []);
 
-  // Función para manejar la apertura del modal de eliminación
   const handleDeleteClick = useCallback((employee) => {
     setEmployeeToDelete(employee);
     onOpen();
   }, [onOpen]);
 
-  // Función para manejar la eliminación del empleado
   const handleDeleteEmployee = useCallback(async () => {
     if (!employeeToDelete) return;
 
@@ -140,22 +127,22 @@ export default function EmployeesPage() {
           Authorization: `Token ${token}`,
         },
       });
-      fetchUsers(); // Refresca la lista de empleados
+      fetchUsers();
       onClose();
+      toast.success(`Empleado ${employeeToDelete.username} eliminado exitosamente.`);
     } catch (error) {
       console.error("Error al eliminar empleado:", error);
-      setError("Error al eliminar el empleado.");
+      toast.error("Ocurrió un error al eliminar el empleado. Por favor, intenta de nuevo.");
     } finally {
       setDeleting(false);
     }
   }, [employeeToDelete, fetchUsers, onClose]);
 
-  // Manejo de búsqueda con debouncing
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
       setPage(1);
-    }, 500); // 500ms de retraso
+    }, 500);
 
     return () => {
       clearTimeout(handler);
@@ -164,12 +151,10 @@ export default function EmployeesPage() {
 
   const totalPages = useMemo(() => Math.ceil(totalCount / 10), [totalCount]);
 
-  // Función para manejar el cambio de página
   const handlePageChange = useCallback((newPage) => {
     setPage(newPage);
   }, []);
 
-  // Función para manejar el cambio de ordenamiento
   const handleSortChange = useCallback((columnKey) => {
     setSortDescriptor((prev) => {
       if (prev.column === columnKey) {
@@ -183,7 +168,6 @@ export default function EmployeesPage() {
     });
   }, []);
 
-  // Función para renderizar el header con íconos de ordenamiento
   const renderHeader = useCallback((column) => {
     const isSortable = column.sortable;
     const isSorted = sortDescriptor.column === column.key;
@@ -205,7 +189,6 @@ export default function EmployeesPage() {
     );
   }, [sortDescriptor, handleSortChange]);
 
-  // Definición de columnas de la tabla
   const columns = [
     { key: "id", label: "#", sortable: true },
     { key: "username", label: "Usuario", sortable: true },
@@ -217,7 +200,6 @@ export default function EmployeesPage() {
     { key: "actions", label: "Acciones", sortable: false },
   ];
 
-  // Generación de filas para la tabla
   const rows = useMemo(() => (
     employees.map(employee => ({
       id: employee.id,
@@ -259,7 +241,6 @@ export default function EmployeesPage() {
     }))
   ), [employees, USER_TYPE_LABELS, router, handleDeleteClick, user]);
 
-  // Filtrado de empleados
   const sortedEmployees = useMemo(() => {
     if (!sortDescriptor.column) return [...employees];
     const sorted = [...employees].sort((a, b) => {
@@ -308,7 +289,6 @@ export default function EmployeesPage() {
     return filtered;
   }, [sortedEmployees, filterKey, searchQuery]);
 
-  // Generación de filas filtradas y ordenadas
   const finalRows = useMemo(() => (
     filteredEmployees.map(employee => ({
       id: employee.id,
@@ -350,11 +330,9 @@ export default function EmployeesPage() {
     }))
   ), [filteredEmployees, USER_TYPE_LABELS, router, handleDeleteClick, user]);
 
-  // Calculo de totalItems y totalPages
   const totalItems = filteredEmployees.length;
   const totalPagesCalc = useMemo(() => Math.ceil(totalItems / 10), [totalItems]);
 
-  // Asegurar que la página no exceda el total de páginas
   useEffect(() => {
     if (page > totalPagesCalc && totalPagesCalc > 0) {
       setPage(1);

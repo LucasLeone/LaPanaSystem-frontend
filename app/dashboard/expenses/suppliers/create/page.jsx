@@ -25,14 +25,11 @@ export default function CreateSupplierPage() {
 
   const router = useRouter();
 
-  // Funciones de Validación
   const isValidEmail = (email) => {
-    // Expresión regular para validar email
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
   const isValidPhoneNumber = (phone) => {
-    // Validar que el número de teléfono tenga entre 10 y 15 dígitos, puede incluir + al inicio
     return /^\+?\d{10,15}$/.test(phone);
   };
 
@@ -40,28 +37,24 @@ export default function CreateSupplierPage() {
     setLoading(true);
     setError(null);
 
-    // Validaciones de campos requeridos
-    if (!name || !phoneNumber || !email || !address) {
-      setError("Por favor, completa todos los campos requeridos.");
+    if (!name) {
+      setError("Por favor, ingresa el nombre del proveedor.");
       setLoading(false);
       return;
     }
 
-    // Validación de formato de email
-    if (!isValidEmail(email)) {
+    if (email && !isValidEmail(email)) {
       setError("Por favor, ingresa un correo electrónico válido.");
       setLoading(false);
       return;
     }
 
-    // Validación de formato de número de teléfono
-    if (!isValidPhoneNumber(phoneNumber)) {
+    if (phoneNumber && !isValidPhoneNumber(phoneNumber)) {
       setError("Por favor, ingresa un número de teléfono válido (10-15 dígitos).");
       setLoading(false);
       return;
     }
 
-    // Preparar Datos para Enviar
     const supplierData = {
       name,
       phone_number: phoneNumber,
@@ -77,12 +70,10 @@ export default function CreateSupplierPage() {
         },
       });
 
-      // Redireccionar tras la creación exitosa
       router.push("/dashboard/expenses/suppliers");
     } catch (error) {
       console.error("Error al crear proveedor:", error);
       if (error.response && error.response.data) {
-        // Mostrar errores específicos de la API
         const apiErrors = Object.values(error.response.data).flat();
         setError(apiErrors.join(" "));
       } else {
@@ -132,7 +123,6 @@ export default function CreateSupplierPage() {
           variant="underlined"
           type="tel"
           aria-label="Número de Teléfono"
-          isRequired
         />
         <Input
           label="Email"
@@ -143,7 +133,6 @@ export default function CreateSupplierPage() {
           variant="underlined"
           type="email"
           aria-label="Correo Electrónico"
-          isRequired
         />
         <Input
           label="Dirección"
@@ -154,7 +143,6 @@ export default function CreateSupplierPage() {
           variant="underlined"
           type="text"
           aria-label="Dirección"
-          isRequired
         />
       </div>
 

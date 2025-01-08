@@ -39,6 +39,7 @@ import { useRouter } from "next/navigation";
 import useExpenses from "@/app/hooks/useExpenses";
 import useExpenseCategories from "@/app/hooks/useExpenseCategories";
 import useSuppliers from "@/app/hooks/useSuppliers";
+import toast from "react-hot-toast";
 
 export default function ExpensesPage() {
   const router = useRouter();
@@ -193,9 +194,10 @@ export default function ExpensesPage() {
       });
       fetchExpenses(appliedFilters, (page - 1) * rowsPerPage, rowsPerPage);
       onClose();
+      toast.success("Gasto eliminado correctamente.");
     } catch (error) {
       console.error("Error al eliminar gasto:", error);
-      // Puedes manejar el error de manera más específica aquí
+      toast.error("Ocurrió un error al eliminar el gasto.");
     }
   }, [expenseToDelete, fetchExpenses, appliedFilters, page, onClose]);
 

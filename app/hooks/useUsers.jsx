@@ -8,22 +8,24 @@ const useUsers = (filters = {}, offset = 0, limit = 100000) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchUsers = useCallback(async (filters, offset, limit) => {
+  const fetchUsers = useCallback(async (
+    newFilters = {},
+    newOffset = 0,
+    newLimit = 100000
+  ) => {
     setLoading(true);
     setError(null);
 
     const token = Cookies.get('access_token');
-
     const queryParams = new URLSearchParams();
 
-    Object.keys(filters).forEach((key) => {
-      queryParams.append(key, filters[key]);
+    Object.keys(newFilters).forEach((key) => {
+      queryParams.append(key, newFilters[key]);
     });
-    queryParams.append('offset', offset);
-    queryParams.append('limit', limit);
+    queryParams.append('offset', newOffset);
+    queryParams.append('limit', newLimit);
 
     const queryString = `?${queryParams.toString()}`;
-
     try {
       const response = await api.get(`/users/${queryString}`, {
         headers: {

@@ -35,6 +35,7 @@ import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import useSuppliers from "@/app/hooks/useSuppliers";
+import toast from "react-hot-toast";
 
 export default function SuppliersPage() {
   const { suppliers, loading, error: suppliersError, fetchSuppliers } = useSuppliers();
@@ -43,7 +44,6 @@ export default function SuppliersPage() {
   const [page, setPage] = useState(1);
 
   const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [supplierToDelete, setSupplierToDelete] = useState(null);
@@ -75,14 +75,12 @@ export default function SuppliersPage() {
   const handleDeleteClick = useCallback((supplier) => {
     setSupplierToDelete(supplier);
     onOpen();
-    setDeleteError(null);
   }, [onOpen]);
 
   const handleDeleteSupplier = useCallback(async () => {
     if (!supplierToDelete) return;
 
     setDeleting(true);
-    setDeleteError(null);
     const token = Cookies.get("access_token");
     try {
       await api.delete(`/suppliers/${supplierToDelete.id}/`, {
@@ -92,9 +90,10 @@ export default function SuppliersPage() {
       });
       await fetchSuppliers();
       onClose();
+      toast.success(`Proveedor ${supplierToDelete.name} eliminado exitosamente.`);
     } catch (error) {
       console.error("Error al eliminar proveedor:", error);
-      setDeleteError("Error al eliminar el proveedor.");
+      toast.error("Ocurrió un error al eliminar el proveedor. Por favor, intenta de nuevo.");
     } finally {
       setDeleting(false);
     }
@@ -389,11 +388,6 @@ export default function SuppliersPage() {
                   ¿Estás seguro de que deseas eliminar al proveedor <strong>{supplierToDelete?.name}</strong>?
                   Esta acción no se puede deshacer.
                 </p>
-                {deleteError && (
-                  <p className="text-red-500 mt-2">
-                    {deleteError}
-                  </p>
-                )}
               </ModalBody>
               <ModalFooter>
                 <Button

@@ -33,6 +33,7 @@ import api from "@/app/axios";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import useExpenseCategories from "@/app/hooks/useExpenseCategories";
+import toast from "react-hot-toast";
 
 export default function ExpenseCategoriesPage() {
   const { expenseCategories: categories, loading, error: expenseCategoriesError, fetchExpenseCategories } = useExpenseCategories();
@@ -41,7 +42,6 @@ export default function ExpenseCategoriesPage() {
   const [page, setPage] = useState(1);
   
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState(null);
   
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryToDelete, setCategoryToDelete] = useState(null);
@@ -86,9 +86,10 @@ export default function ExpenseCategoriesPage() {
       });
       fetchExpenseCategories();
       onClose();
+      toast.success(`Categoría de gastos "${categoryToDelete.name}" eliminada.`);
     } catch (error) {
       console.error("Error al eliminar la categoría de gastos:", error);
-      setError("Error al eliminar la categoría de gastos.");
+      toast.error("Error al eliminar la categoría de gastos.");
     } finally {
       setDeleting(false);
     }
