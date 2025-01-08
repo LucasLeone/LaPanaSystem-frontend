@@ -34,10 +34,6 @@ export default function DailyBreakdownChart({ dailyBreakdown }) {
       parseFloat(item.total_returns)
     );
 
-    const netCollected = dailyBreakdown.map((item) =>
-      parseFloat(item.net_collected)
-    );
-
     const dailyExpenses = dailyBreakdown.map((item) =>
       parseFloat(item.daily_expenses)
     );
@@ -68,11 +64,6 @@ export default function DailyBreakdownChart({ dailyBreakdown }) {
           name: "Total Devoluciones",
           type: "line",
           data: totalReturns,
-        },
-        {
-          name: "Cobrado menos Devoluciones",
-          type: "line",
-          data: netCollected,
         },
         {
           name: "Gastos",

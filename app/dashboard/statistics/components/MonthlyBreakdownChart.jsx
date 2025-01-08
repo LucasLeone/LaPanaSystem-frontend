@@ -8,20 +8,17 @@ import { parseISO, format } from "date-fns";
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 export default function MonthlyBreakdownChart({ monthlyBreakdown }) {
-  // Procesa los datos para el gráfico
   const processedData = useMemo(() => {
     if (!monthlyBreakdown || monthlyBreakdown.length === 0) {
       return { categories: [], series: [] };
     }
 
-    // Filtrar meses con todas las métricas en cero (opcional)
     const filteredBreakdown = monthlyBreakdown.filter((item) => {
       return (
         parseInt(item.sales_count, 10) !== 0 ||
         parseFloat(item.total_sales) !== 0 ||
         parseFloat(item.total_collected) !== 0 ||
         parseFloat(item.total_returns) !== 0 ||
-        parseFloat(item.net_collected) !== 0 ||
         parseFloat(item.monthly_expenses) !== 0 ||
         parseFloat(item.monthly_profit) !== 0
       );
@@ -49,10 +46,6 @@ export default function MonthlyBreakdownChart({ monthlyBreakdown }) {
 
     const totalReturns = filteredBreakdown.map((item) =>
       parseFloat(item.total_returns)
-    );
-
-    const netCollected = filteredBreakdown.map((item) =>
-      parseFloat(item.net_collected)
     );
 
     const monthlyExpenses = filteredBreakdown.map((item) =>
@@ -87,11 +80,6 @@ export default function MonthlyBreakdownChart({ monthlyBreakdown }) {
           data: totalReturns,
         },
         {
-          name: "Cobrado menos Devoluciones",
-          type: "column",
-          data: netCollected,
-        },
-        {
           name: "Gastos",
           type: "column",
           data: monthlyExpenses,
@@ -114,7 +102,7 @@ export default function MonthlyBreakdownChart({ monthlyBreakdown }) {
           show: true,
         },
         zoom: {
-          enabled: false, // Deshabilitar zoom si no es necesario
+          enabled: false,
         },
       },
       plotOptions: {
@@ -125,8 +113,7 @@ export default function MonthlyBreakdownChart({ monthlyBreakdown }) {
         },
       },
       dataLabels: {
-        enabled: false, // Deshabilitar las etiquetas de datos
-        // Si deseas mantener dataLabels pero personalizarlas, puedes ajustar aquí
+        enabled: false,
       },
       xaxis: {
         categories: processedData.categories,
@@ -143,34 +130,49 @@ export default function MonthlyBreakdownChart({ monthlyBreakdown }) {
           },
         },
       },
-      yaxis: {
-        title: {
-          text: "Valores",
-          style: {
-            fontSize: "14px",
+      yaxis: [
+        {
+          seriesName: "Cantidad de Ventas",
+          title: {
+            text: "Cantidad de Ventas",
+            style: {
+              fontSize: "14px",
+            },
           },
+          labels: {
+            formatter: (val) => parseInt(val, 10),
+          },
+          tickAmount: 5,
+          min: 0,
         },
-        labels: {
-          formatter: (val) =>
-            new Intl.NumberFormat("es-AR", {
-              style: "currency",
-              currency: "ARS",
-            }).format(val),
+        {
+          seriesName: "Total Vendido",
+          opposite: true,
+          title: {
+            text: "Valores",
+            style: {
+              fontSize: "14px",
+            },
+          },
+          labels: {
+            formatter: (val) =>
+              new Intl.NumberFormat("es-AR", {
+                style: "currency",
+                currency: "ARS",
+              }).format(val),
+          },
+          tickAmount: 5,
+          min: 0,
         },
-        tickAmount: 5, // Ajusta según el rango de tus datos
-        min: 0,
-      },
+      ],
       tooltip: {
         shared: true,
         intersect: false,
         y: {
           formatter: function (val, { seriesIndex }) {
-            // Identificar si el valor es entero o monetario
             if (seriesIndex === 0) {
-              // Cantidad de Ventas
               return `${val} ventas`;
             } else {
-              // Valores monetarios
               return new Intl.NumberFormat("es-AR", {
                 style: "currency",
                 currency: "ARS",
@@ -185,13 +187,12 @@ export default function MonthlyBreakdownChart({ monthlyBreakdown }) {
         floating: false,
       },
       colors: [
-        "#4CAF50", // Cantidad de Ventas
-        "#FF9800", // Total Vendido
-        "#2196F3", // Total Cobrado
-        "#F44336", // Total Devoluciones
-        "#9C27B0", // Cobrado menos Devoluciones
-        "#FFC107", // Gastos
-        "#00BCD4", // Ganancias
+        "#4CAF50",
+        "#FF9800",
+        "#2196F3",
+        "#F44336",
+        "#9C27B0",
+        "#00BCD4",
       ],
     };
   }, [processedData.categories]);
@@ -210,8 +211,8 @@ export default function MonthlyBreakdownChart({ monthlyBreakdown }) {
             <ReactApexChart
               options={chartOptions}
               series={chartSeries}
-              type="bar" // Tipo de gráfico de barras (columnas)
-              height="400" // Usar una altura fija o ajustada según el breakpoint
+              type="bar"
+              height="400"
             />
           </div>
         ) : (
