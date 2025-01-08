@@ -347,12 +347,12 @@ export default function ReturnsPage() {
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Devoluciones</p>
         <div className="flex flex-wrap gap-2">
-          <Tooltip content="Exportar devoluciones">
+          {/* <Tooltip content="Exportar devoluciones">
             <Button variant="bordered" className="rounded-md border-1.5">
               <IconDownload className="h-4 mr-1" />
               Exportar
             </Button>
-          </Tooltip>
+          </Tooltip> */}
           <Tooltip content="Agregar nueva devolución">
             <Link href="/dashboard/returns/create">
               <Button className="rounded-md bg-black text-white">

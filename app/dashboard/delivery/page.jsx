@@ -237,12 +237,12 @@ export default function PendingDeliveriesPage() {
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Repartir</p>
         <div className="flex flex-wrap gap-2">
-          <Tooltip content="Exportar ventas">
+          {/* <Tooltip content="Exportar ventas">
             <Button variant="bordered" className="rounded-md border-1.5">
               <IconDownload className="h-4 mr-1" />
               Exportar
             </Button>
-          </Tooltip>
+          </Tooltip> */}
           {/* Botón para abrir el modal de filtros */}
           <Tooltip content="Filtrar ventas">
             <Button variant="bordered" className="rounded-md border-1.5" onPress={onFilterModalOpen}>

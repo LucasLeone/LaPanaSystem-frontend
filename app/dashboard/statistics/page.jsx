@@ -114,14 +114,14 @@ export default function StatisticsPage() {
       {/* Encabezado y Botones */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Estadísticas</p>
-        <div className="flex flex-wrap gap-2">
+        {/* <div className="flex flex-wrap gap-2">
           <Tooltip content="Exportar productos">
             <Button variant="bordered" className="rounded-md border-1.5">
               <IconDownload className="h-4 mr-1" />
               Exportar
             </Button>
           </Tooltip>
-        </div>
+        </div> */}
       </div>
 
       {/* Tabs de Navegación */}

@@ -320,12 +320,12 @@ export default function CustomersPage() {
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-6">
         <p className="text-2xl font-bold mb-4 md:mb-0">Clientes</p>
         <div className="flex gap-1">
-          <Tooltip content="Exportar clientes">
+          {/* <Tooltip content="Exportar clientes">
             <Button variant="bordered" className="rounded-md border-1.5">
               <IconDownload className="h-4 mr-1" />
               Exportar
             </Button>
-          </Tooltip>
+          </Tooltip> */}
           <Tooltip content="Agregar nuevo cliente">
             <Link href="/dashboard/customers/create">
               <Button className="rounded-md bg-black text-white">
