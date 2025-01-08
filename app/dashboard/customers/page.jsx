@@ -93,13 +93,15 @@ export default function CustomersPage() {
     loading,
     error: fetchError,
     fetchCustomers,
-  } = useCustomers({
-    search: debouncedSearchQuery,
-    customer_type: filterCustomerType,
-    ordering: orderingParam,
-    page: offset,
-    limit: 10,
-  });
+  } = useCustomers(
+    {
+      search: debouncedSearchQuery,
+      customer_type: filterCustomerType,
+      ordering: orderingParam,
+    },
+    offset,
+    10
+  );
 
   const filterItems = [
     { key: "minorista", label: "Minorista" },
@@ -118,7 +120,6 @@ export default function CustomersPage() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [customerToDelete, setCustomerToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState(null);
 
   const handleDeleteClick = useCallback(
     (customer) => {
@@ -147,9 +148,10 @@ export default function CustomersPage() {
         limit: 10,
       });
       onClose();
+      toast.success("¡Cliente eliminado exitosamente!");
     } catch (err) {
       console.error("Error al eliminar cliente:", err);
-      setError("Error al eliminar el cliente.");
+      toast.error("Error al eliminar cliente.");
     } finally {
       setDeleting(false);
     }

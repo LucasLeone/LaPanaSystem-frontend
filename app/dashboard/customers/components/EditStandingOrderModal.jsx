@@ -17,6 +17,7 @@ import { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import { DAY_NAMES } from "../page";
 import api from "@/app/axios";
+import toast from "react-hot-toast";
 
 export default function EditStandingOrderModal({
   editingStandingOrder,
@@ -168,6 +169,9 @@ export default function EditStandingOrderModal({
       setStandingOrders(sortedOrders);
 
       setEditingStandingOrder(null);
+      setErrorTitle(null);
+      setErrorDescription(null);
+      toast.success("Pedido diario guardado correctamente.");
     } catch (err) {
       console.error("Error al guardar el pedido diario:", err);
       setErrorTitle("Error al guardar");
@@ -206,6 +210,9 @@ export default function EditStandingOrderModal({
       setStandingOrders(sortedOrders);
 
       setEditingStandingOrder(null);
+      setErrorTitle(null);
+      setErrorDescription(null);
+      toast.success("Pedido diario eliminado correctamente.");
     } catch (err) {
       console.error("Error al eliminar el pedido diario:", err);
       setErrorTitle("Error al eliminar");

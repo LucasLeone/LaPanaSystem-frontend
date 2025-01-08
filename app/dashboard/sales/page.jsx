@@ -259,6 +259,8 @@ export default function SalesPage() {
         totalPages={Math.ceil(totalCount / rowsPerPage)}
         currentPage={page}
         onPageChange={handlePageChangeFunc}
+        totalCount={totalCount}
+        displayedCount={sales.length}
       />
 
       {/* Modales */}
