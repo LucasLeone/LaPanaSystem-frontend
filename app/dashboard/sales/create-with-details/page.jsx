@@ -27,7 +27,7 @@ import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import useCustomers from "@/app/hooks/useCustomers";
 import useProducts from "@/app/hooks/useProducts";
-import {now, getLocalTimeZone} from "@internationalized/date";
+import { now, getLocalTimeZone } from "@internationalized/date";
 import { formatDateToISO } from "@/app/utils";
 
 const PAYMENT_METHOD_CHOICES = [
@@ -221,6 +221,10 @@ export default function CreateSalePage() {
           onSelectionChange={(keys) => {
             const selected = Array.from(keys)[0];
             setSaleType(selected ? selected.toString() : null);
+
+            if (selected === "minorista") {
+              setNeedsDelivery(false);
+            }
           }}
           variant="underlined"
           isRequired
@@ -265,10 +269,11 @@ export default function CreateSalePage() {
         </Select>
 
         <Checkbox
-          checked={needsDelivery}
-          onChange={(e) => setNeedsDelivery(e.target.checked)}
+          isSelected={needsDelivery}
+          onValueChange={setNeedsDelivery}
           label="Necesita Envío"
           aria-label="Necesita Envío"
+          isDisabled={saleType === "minorista"}
         >
           Necesita Envío
         </Checkbox>
