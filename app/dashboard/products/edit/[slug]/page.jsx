@@ -101,6 +101,12 @@ export default function EditProductPage() {
       return;
     }
 
+    if (name.length > 100) {
+      setError("El nombre del producto no puede tener más de 100 caracteres.");
+      setLoading(false);
+      return;
+    }
+
     const productData = {
       barcode,
       name,
@@ -268,6 +274,9 @@ export default function EditProductPage() {
             >
               <SelectItem key="g" value="g">Gramos (g)</SelectItem>
               <SelectItem key="kg" value="kg">Kilogramos (kg)</SelectItem>
+              <SelectItem key="ml" value="ml">Mililitros (ml)</SelectItem>
+              <SelectItem key="l" value="l">Litros (l)</SelectItem>
+              <SelectItem key="cm3" value="cm3">Centímetros Cúbicos (cm³)</SelectItem>
             </Select>
           </div>
         </div>
