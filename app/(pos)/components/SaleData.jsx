@@ -89,11 +89,13 @@ export default function SaleData() {
 
         if (field === "product" && value) {
           const selectedProduct = products.find((prod) => prod.id === parseInt(value));
+
           if (selectedProduct) {
-            updatedDetail.price =
-              saleData.sale_type === "mayorista"
-                ? parseFloat(selectedProduct.wholesale_price)
-                : parseFloat(selectedProduct.retail_price);
+            if (saleData.sale_type === "mayorista" && selectedProduct.wholesale_price) {
+              updatedDetail.price = parseFloat(selectedProduct.wholesale_price);
+            } else {
+              updatedDetail.price = parseFloat(selectedProduct.retail_price);
+            }
 
             updatedDetail.subtotal = updatedDetail.price * updatedDetail.quantity;
           }
@@ -126,13 +128,19 @@ export default function SaleData() {
     setSaleDetails((prevDetails) =>
       prevDetails.map((detail) => {
         if (!detail.product) return detail;
-        const selectedProduct = products.find((prod) => prod.id === parseInt(detail.product));
+
+        const selectedProduct = products.find(
+          (prod) => prod.id === parseInt(detail.product)
+        );
         if (!selectedProduct) return detail;
 
-        const newPrice =
-          newSaleType === "mayorista"
-            ? parseFloat(selectedProduct.wholesale_price)
-            : parseFloat(selectedProduct.retail_price);
+        let newPrice;
+
+        if (newSaleType === "mayorista" && selectedProduct.wholesale_price) {
+          newPrice = parseFloat(selectedProduct.wholesale_price);
+        } else {
+          newPrice = parseFloat(selectedProduct.retail_price);
+        }
 
         return {
           ...detail,
